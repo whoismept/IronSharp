@@ -14,12 +14,10 @@ Just compile the project and run on victim system
 ### IronSharp detects following vulnerabilities
 
 Missing Updates<br>
-AlwaysInstallElevated<br>
-AutoLogon<br>
-GetWMIQuery<br>
-HijackablePaths<br>
-ModifiableAutorun<br>
-ModifiableKeys<br>
-RegistryUtilities<br>
+AlwaysInstallElevated vaues<br>
+Registry Auto Logons<br>
+%PATH% values for Dll Hijacking<br>
+Modifiable Registry Autoruns<br>
+Modifiable Keys Registry Keys<br>
 UnquotedPathCheck<br>
 
