@@ -101,7 +101,7 @@
     <Compile Include="CVE\CVE-2019-0841.cs" />
     <Compile Include="Utilities\AlwaysInstallElevated.cs" />
     <Compile Include="Utilities\AutoLogon.cs" />
-    <Compile Include="CVE\CVECheck.cs" />
+    <Compile Include="Utilities\CVECheck.cs" />
     <Compile Include="Utilities\HijackablePaths.cs" />
     <Compile Include="Information.cs" />
     <Compile Include="Program.cs" />
