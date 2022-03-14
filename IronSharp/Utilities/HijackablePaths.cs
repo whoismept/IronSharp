@@ -19,3 +19,5 @@ namespace IronSharp.Utilities
         }
     }
 }
+
+//specialthanks to: https://github.com/erdemstar
