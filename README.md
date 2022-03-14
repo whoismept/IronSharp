@@ -21,5 +21,5 @@ Registry Auto Logons<br>
 %PATH% values for Dll Hijacking<br>
 Modifiable Registry Autoruns<br>
 Modifiable Keys Registry Keys<br>
-UnquotedPathCheck<br>
+Unquoted Servie Paths<br>
 
