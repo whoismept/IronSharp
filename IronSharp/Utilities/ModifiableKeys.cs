@@ -29,7 +29,7 @@ namespace IronSharp.Utilities
                 }
                 catch (Exception ex)
                 {
-                    Console.Write($"[X] Exception: {ex.Message}");
+                    Console.WriteLine($"[X] Exception: {ex.Message}");
                 }
             }
         }
