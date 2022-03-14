@@ -2,6 +2,8 @@
 
 ![Ekran görüntüsü 2022-03-10 235531](https://user-images.githubusercontent.com/48562581/157753338-57e41da3-c393-42bf-a4a8-36909987a9bf.png)</center>
 
+Ironsharp is a tool written in C# that detects CVEs caused by missing updates and privilege escalation vulnerabilities caused by misconfigurations on Windows OS.
+
 
 # Ironsharp In Action
 
