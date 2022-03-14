@@ -27,7 +27,7 @@ namespace IronSharp
             Utilities.UnquotedPathCheck.CheckUnquotedPath();
             Console.WriteLine("------------------------");
             Console.WriteLine("[*] Checking Vulnerabilities");
-            CVE.CVECheck.CheckAll();
+            Utilities.CVECheck.CheckAll();
             Console.WriteLine("------------------------");
             Console.WriteLine("[*] Hijackable Paths");
             Utilities.HijackablePaths.HighjackablePaths();
