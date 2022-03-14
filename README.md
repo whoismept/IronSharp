@@ -5,9 +5,7 @@
 
 # Ironsharp
 
-
-![ironsharpaction](https://user-images.githubusercontent.com/48562581/158131267-9f19d76d-df18-4593-87a9-3b8edab27bf4.jpg)
-
+![ironinaction](https://user-images.githubusercontent.com/48562581/158132242-4af50ceb-0190-4be9-b5ba-786364479b10.jpg)
 
 ### USAGE
 Just compile the project and run on victim system
