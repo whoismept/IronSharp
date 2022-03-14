@@ -41,7 +41,7 @@ namespace IronSharp.CVE
             }
             if (vulnkblist.Intersect(installedkblist).Any())
             {
-                Console.WriteLine("Vulnerable for CVE-2020-0787");
+                Console.WriteLine("Vulnerable for CVE-2020-0796");
             }
         }
     }
