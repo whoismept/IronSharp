@@ -22,7 +22,7 @@ namespace IronSharp.Utilities
                         ManagementObjectCollection data = wmiData.Get();
                         foreach (ManagementObject result in data)
                         {
-                            Console.Write("Modifiable key found :" +
+                            Console.WriteLine("Modifiable key found :" +
                                          $"{"SYSTEM\\CurrentControlSet\\Services\\" + sc.ServiceName}");
                         }
                     }
