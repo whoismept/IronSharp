@@ -83,6 +83,10 @@
   <ItemGroup>
     <Compile Include="CVE\CVE_2020_0796.cs" />
     <Compile Include="CVE\CVE_2020_0787.cs" />
+    <Compile Include="CVE\CVE_2021_1732.cs" />
+    <Compile Include="CVE\CVE_2021_40449.cs" />
+    <Compile Include="CVE\CVE_2022_21882.cs" />
+    <Compile Include="CVE\CVE_2021_34527.cs" />
     <Compile Include="CVE\CVE_2020_1013.cs" />
     <Compile Include="CVE\CVE_2020_0683.cs" />
     <Compile Include="CVE\CVE_2020_0668.cs" />

@@ -17,7 +17,6 @@ namespace IronSharp
             Mert Daş     @merterpreter
             Mert Umut    @whoismept
 
-
 ";
             Console.WriteLine(bannerText);
         }

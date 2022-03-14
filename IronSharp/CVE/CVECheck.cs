@@ -45,6 +45,22 @@ namespace IronSharp.CVE
             var buildnumber = Utilities.GetWMIQuery.GetBuildNumber();
             CVE_2019_0836.Check(buildnumber, kblist);            
             CVE_2019_0841.Check(buildnumber, kblist);
+            CVE_2019_1064.Check(buildnumber, kblist);
+            CVE_2019_1130.Check(buildnumber, kblist);
+            CVE_2019_1253.Check(buildnumber, kblist);
+            CVE_2019_1315.Check(buildnumber, kblist);
+            CVE_2019_1385.Check(buildnumber, kblist);
+            CVE_2019_1388.Check(buildnumber, kblist);
+            CVE_2019_1405.Check(buildnumber, kblist);
+            CVE_2020_0668.Check(buildnumber, kblist);
+            CVE_2020_0683.Check(buildnumber, kblist);
+            CVE_2020_0787.Check(buildnumber, kblist);
+            CVE_2020_0796.Check(buildnumber, kblist);
+            CVE_2020_1013.Check(buildnumber, kblist);
+            CVE_2021_1732.Check(buildnumber, kblist);
+            CVE_2021_34527.Check(buildnumber, kblist);
+            CVE_2021_40449.Check(buildnumber, kblist);
+            CVE_2022_21882.Check(buildnumber, kblist);
         }
     }
 }
