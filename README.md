@@ -10,7 +10,7 @@ Ironsharp is a tool written in C# that detects CVEs caused by missing updates an
 ![ironinaction](https://user-images.githubusercontent.com/48562581/158132242-4af50ceb-0190-4be9-b5ba-786364479b10.jpg)
 
 ### USAGE
-Just compile the project and run on victim system
+Just compile the project and run on your system
 
 
 ### IronSharp detects following vulnerabilities
