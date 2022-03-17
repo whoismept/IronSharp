@@ -11,7 +11,10 @@ namespace IronSharp
             Information.Banner();
             Console.WriteLine("-----------------------");
             Console.WriteLine("[+] OS Name: " + Utilities.GetWMIQuery.GetOSName());
-            Console.WriteLine("[+] Windows Display Version: " + Utilities.RegistryUtilities.GetVersionFromRegistry());
+            if (!Utilities.GetWMIQuery.GetOSName().Contains("Server"))
+            {
+                Console.WriteLine("[+] Windows Display Version: " + Utilities.RegistryUtilities.GetVersionFromRegistry());
+            }
             Console.WriteLine("[+] Windows Build Name: " + Utilities.GetWMIQuery.GetBuildNumber());
             Console.WriteLine("[+] Windows Release ID: " + Utilities.RegistryUtilities.GetReleaseIdFromRegistiry());
             Console.WriteLine("------------------------");
