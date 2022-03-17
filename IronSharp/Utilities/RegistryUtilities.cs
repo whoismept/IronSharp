@@ -66,6 +66,10 @@ namespace IronSharp.Utilities
                 Console.WriteLine("[!] {0}", e.Message);
                 throw;
             }
+            catch (NullReferenceException)
+            {
+                return "";
+            }
         }
         public static bool IsModifiable(RegistryKey key)
         {
