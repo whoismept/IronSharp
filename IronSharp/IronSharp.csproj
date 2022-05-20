@@ -85,6 +85,7 @@
     <Compile Include="CVE\CVE_2020_0787.cs" />
     <Compile Include="CVE\CVE_2021_1732.cs" />
     <Compile Include="CVE\CVE_2021_40449.cs" />
+    <Compile Include="CVE\CVE_2021_42278.cs" />
     <Compile Include="CVE\CVE_2022_21882.cs" />
     <Compile Include="CVE\CVE_2021_34527.cs" />
     <Compile Include="CVE\CVE_2020_1013.cs" />

@@ -49,6 +49,7 @@ namespace IronSharp.Utilities
             CVE.CVE_2021_34527.Check(buildnumber, kblist);
             CVE.CVE_2021_40449.Check(buildnumber, kblist);
             CVE.CVE_2022_21882.Check(buildnumber, kblist);
+            CVE.CVE_2021_42278.Check(buildnumber, kblist);
         }
     }
 }
