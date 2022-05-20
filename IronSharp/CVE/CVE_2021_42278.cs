@@ -11,29 +11,35 @@ namespace IronSharp.CVE
             var vulnkblist = new List<int>();
             switch (buildnumber)
             {
-                case 18363:
+                case 9600:
                     vulnkblist.AddRange(new int[] {
-                        5008102
+                        5007247,
+                        5007255
                     });
                     break;
-                case 19042:
+                case 17763:
                     vulnkblist.AddRange(new int[] {
-                        5008102
+                        5007206
                     });
                     break;
-                case 19043:
+                case 19041:
                     vulnkblist.AddRange(new int[] {
-                        5008102
+                        5007186
+                    });
+                    break;
+                case 14393:
+                    vulnkblist.AddRange(new int[] {
+                        5007192
+                    });
+                    break;
+                case 7601:
+                    vulnkblist.AddRange(new int[] {
+                        5007236, 5007233
                     });
                     break;
                 case 20348:
                     vulnkblist.AddRange(new int[] {
-                        5008102
-                    });
-                    break;
-                case 22000:
-                    vulnkblist.AddRange(new int[] {
-                        5008102
+                        5007205
                     });
                     break;
                 default:
