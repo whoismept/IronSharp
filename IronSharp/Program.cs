@@ -49,7 +49,9 @@ namespace IronSharp
             Console.WriteLine("------------------------");
             Console.WriteLine("[*] Av Information");
             Utilities.GetAv.CheckSecurityProduct();
-            
+            Console.WriteLine("------------------------");
+            Console.WriteLine("[*] Side Load Check");
+            Utilities.CheckTeams.TeamsInstalled();
         }
     }
 }
