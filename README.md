@@ -22,4 +22,7 @@ Registry Auto Logons<br>
 Modifiable Registry Autoruns<br>
 Modifiable Keys Registry Keys<br>
 Unquoted Servie Paths<br>
+Installed Av/EDR/EPP Products<br>
+Teams for Dll Side Loading<br>
+
 
