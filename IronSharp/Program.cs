@@ -46,6 +46,10 @@ namespace IronSharp
             Console.WriteLine("------------------------");
             Console.WriteLine("[*] Autologon");
             Utilities.AutoLogon.LoginCheck();
+            Console.WriteLine("------------------------");
+            Console.WriteLine("[*] Av Information");
+            Utilities.GetAv.CheckSecurityProduct();
+            
         }
     }
 }
