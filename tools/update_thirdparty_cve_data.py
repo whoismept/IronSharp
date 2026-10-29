@@ -20,6 +20,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -146,6 +147,21 @@ def order_cves(cves):
     return sorted(cves, key=lambda c: (not c.get("kev"), c.get("id", "")))
 
 
+def cve_key(cid):
+    m = re.match(r"CVE-(\d+)-(\d+)", cid or "")
+    return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+
+
+def cap_newest(cves, n):
+    """Keep only ranges belonging to the n newest distinct CVE ids; return
+    (kept, omitted_count). For high-volume products (browsers) this bounds the
+    dataset while still flagging the most recent issues."""
+    ids = sorted({c["id"] for c in cves}, key=cve_key, reverse=True)
+    keep = set(ids[:n])
+    kept = [c for c in cves if c["id"] in keep]
+    return kept, max(0, len(ids) - len(keep))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=DEFAULT_OUT)
@@ -170,8 +186,15 @@ def main():
             continue
         try:
             cves = fetch_product_cves(vendor, product, kev)
+            cap = p.get("capNewest")
+            if cap:
+                cves, omitted = cap_newest(cves, int(cap))
+                p["omitted"] = omitted
+            else:
+                p.pop("omitted", None)
             p["cves"] = order_cves(cves)
-            print("{}: {} CVE range(s)".format(p.get("name"), len(p["cves"])))
+            extra = " (+{} omitted)".format(p["omitted"]) if p.get("omitted") else ""
+            print("{}: {} CVE range(s){}".format(p.get("name"), len(p["cves"]), extra))
         except Exception as e:
             # Keep whatever was there; never drop coverage on a transient error.
             print("NVD query failed for {} ({}); keeping existing CVEs.".format(

@@ -30,6 +30,10 @@ namespace IronSharp.Core
         public string Vendor;
         public List<string> Aliases = new List<string>();
         public List<ProductCve> Cves = new List<ProductCve>();
+        // Number of older CVEs intentionally not carried in the dataset (for
+        // capped products such as browsers, which have thousands). When > 0 the
+        // report shows a "... (+N earlier)" marker.
+        public int Omitted;
     }
 
     internal static class ThirdPartyData
@@ -77,6 +81,11 @@ namespace IronSharp.Core
                         Vendor = AsString(p, "vendor"),
                     };
                     if (string.IsNullOrEmpty(rec.Name)) continue;
+                    if (p.ContainsKey("omitted"))
+                    {
+                        try { rec.Omitted = Convert.ToInt32(p["omitted"]); }
+                        catch { rec.Omitted = 0; }
+                    }
 
                     var aliases = p.ContainsKey("aliases") ? p["aliases"] as object[] : null;
                     if (aliases != null)

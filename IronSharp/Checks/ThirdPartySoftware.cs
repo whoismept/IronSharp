@@ -92,6 +92,10 @@ namespace IronSharp.Checks
                 .ThenBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
                 .Select(c => c.Kev ? c.Id + "*  (ACTIVELY EXPLOITED - CISA KEV)" : c.Id)
                 .ToList();
+            if (p.Omitted > 0)
+            {
+                ids.Add("... (+" + p.Omitted + " earlier CVEs not individually listed)");
+            }
 
             string fixedTo = HighestFix(vuln);
             string rec = "Update " + p.Name + " to the latest version"

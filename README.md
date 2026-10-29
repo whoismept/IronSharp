@@ -109,6 +109,9 @@ To stay true to IronSharp's low-noise goal, matching is deliberately conservativ
 - A product is flagged only when its installed version falls inside a CVE's
   affected range **with a known fixed version**. If the version can't be parsed,
   the item is left unassessed rather than guessed.
+- High-volume products such as web browsers (Chrome, Firefox) carry only their
+  **3 most recent CVEs** in the dataset; older ones are summarised in the report
+  as `... (+N earlier CVEs)` to keep the dataset and output compact.
 
 The dataset is produced by `tools/update_thirdparty_cve_data.py` +
 `update-thirdparty-data.yml`, which query the **NVD 2.0 API** per curated product
