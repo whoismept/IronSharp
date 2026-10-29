@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using IronSharp.Core;
@@ -21,12 +22,12 @@ namespace IronSharp
             Information.Banner();
             PrintSystemInfo();
 
-            bool online = args.Any(a => a.Equals("--online", StringComparison.OrdinalIgnoreCase));
-            string onlineJson = online ? FetchOnlineDataset() : null;
+            // Dataset precedence: --data <file>  >  --online  >  embedded.
+            string datasetJson = ResolveDataset(args);
 
             // All checks are read-only: they inspect WMI, the registry and file
             // ACLs and record findings. Nothing on the system is modified.
-            Utilities.CVECheck.CheckAll(onlineJson);
+            Utilities.CVECheck.CheckAll(datasetJson);
             Utilities.UnquotedPathCheck.CheckUnquotedPath();
             Utilities.HijackablePaths.HighjackablePaths();
             Utilities.ModifiableAutorun.CheckAutoRun();
@@ -50,12 +51,64 @@ namespace IronSharp
         {
             Console.WriteLine("IronSharp - read-only Windows hardening advisor");
             Console.WriteLine();
-            Console.WriteLine("Usage: IronSharp.exe [--online]");
-            Console.WriteLine("  --online   Fetch the latest CVE/update dataset over HTTPS before auditing");
-            Console.WriteLine("             (requires internet on this host; otherwise the embedded dataset is used).");
-            Console.WriteLine("  -h, --help Show this help.");
+            Console.WriteLine("Usage: IronSharp.exe [--online | --data <file>]");
+            Console.WriteLine("  (no option)    Audit using the CVE dataset embedded in the binary (offline).");
+            Console.WriteLine("  --online       Download the latest CVE dataset over HTTPS first");
+            Console.WriteLine("                 (requires internet on this host; falls back to embedded).");
+            Console.WriteLine("  --data <file>  Load the CVE dataset from a local JSON file (offline refresh");
+            Console.WriteLine("                 without rebuilding; e.g. a cve-data.json copied in by hand).");
+            Console.WriteLine("  -h, --help     Show this help.");
             Console.WriteLine();
             Console.WriteLine("The tool only reads and reports; it never changes the system.");
+        }
+
+        // Returns an override dataset JSON, or null to use the embedded dataset.
+        private static string ResolveDataset(string[] args)
+        {
+            string dataPath = GetOption(args, "--data");
+            if (dataPath != null)
+            {
+                return LoadLocalDataset(dataPath);
+            }
+            if (args.Any(a => a.Equals("--online", StringComparison.OrdinalIgnoreCase)))
+            {
+                return FetchOnlineDataset();
+            }
+            return null;
+        }
+
+        // Supports "--data <value>" and "--data=<value>".
+        private static string GetOption(string[] args, string name)
+        {
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i].Equals(name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i + 1 < args.Length ? args[i + 1] : null;
+                }
+                if (args[i].StartsWith(name + "=", StringComparison.OrdinalIgnoreCase))
+                {
+                    return args[i].Substring(name.Length + 1);
+                }
+            }
+            return null;
+        }
+
+        private static string LoadLocalDataset(string path)
+        {
+            try
+            {
+                string json = File.ReadAllText(path);
+                Console.WriteLine("[*] Using CVE dataset file: " + path);
+                Console.WriteLine("------------------------");
+                return json;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("[!] Could not read dataset file ({0}); using the embedded dataset.", e.Message);
+                Console.WriteLine("------------------------");
+                return null;
+            }
         }
 
         private static string FetchOnlineDataset()

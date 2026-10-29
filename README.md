@@ -117,10 +117,15 @@ The binary is written to `IronSharp\bin\Release\IronSharp.exe`.
 Run the executable on the machine you want to audit:
 
 ```bat
-IronSharp.exe                 :: audit using the embedded dataset (offline)
-IronSharp.exe --online        :: fetch the latest CVE dataset first (needs internet)
-IronSharp.exe --help          :: show usage
+IronSharp.exe                      :: audit using the embedded dataset (offline)
+IronSharp.exe --online             :: fetch the latest CVE dataset first (needs internet)
+IronSharp.exe --data cve-data.json :: load the dataset from a local file (offline refresh)
+IronSharp.exe --help               :: show usage
 ```
+
+Dataset precedence is `--data` > `--online` > embedded. `--data` lets an
+air-gapped operator refresh coverage by copying in a newer `cve-data.json`
+(e.g. via USB) without rebuilding the binary or any internet access.
 
 It writes to standard output. Redirect to keep a report:
 
