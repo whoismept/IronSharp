@@ -53,7 +53,8 @@ namespace IronSharp.Utilities
             else
             {
                 Report.Weak(Category, "Non-privileged-writable autorun targets", Severity.Medium,
-                    writableTargets.Count + " autorun target(s) writable by non-privileged users: " + Fmt.List(writableTargets),
+                    writableTargets.Count + " autorun target(s) writable by non-privileged users:",
+                    writableTargets,
                     "Restrict write access on these executables to administrators; a writable autorun target runs at logon and can be hijacked.",
                     "CIS - startup program / file permission hardening");
             }

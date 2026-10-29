@@ -31,6 +31,24 @@ namespace IronSharp.Core
             Add(category, title, severity, true, observed, recommendation, reference);
         }
 
+        // Weakness with a full detail list printed one entry per line under Observed.
+        public static void Weak(string category, string title, Severity severity,
+                                string observed, IEnumerable<string> items,
+                                string recommendation, string reference)
+        {
+            Findings.Add(new Finding
+            {
+                Category = category,
+                Title = title,
+                Severity = severity,
+                IsWeak = true,
+                Observed = observed,
+                Recommendation = recommendation,
+                Reference = reference,
+                Items = items == null ? null : items.ToList()
+            });
+        }
+
         public static void Ok(string category, string title, string observed)
         {
             Add(category, title, Severity.Info, false, observed, null, null);
@@ -50,6 +68,13 @@ namespace IronSharp.Core
                     if (!string.IsNullOrEmpty(f.Observed))
                     {
                         Console.WriteLine("    Observed       : " + f.Observed);
+                    }
+                    if (f.Items != null && f.Items.Count > 0)
+                    {
+                        foreach (var item in f.Items)
+                        {
+                            WriteLine(ConsoleColor.DarkGray, "        - " + item);
+                        }
                     }
                     if (f.IsWeak && !string.IsNullOrEmpty(f.Recommendation))
                     {

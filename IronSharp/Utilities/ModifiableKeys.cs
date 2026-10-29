@@ -43,7 +43,8 @@ namespace IronSharp.Utilities
             else
             {
                 Report.Weak(Category, "Service registry keys writable by non-privileged users", Severity.High,
-                    modifiable.Count + " service key(s) writable by non-privileged users: " + Fmt.List(modifiable),
+                    modifiable.Count + " service key(s) writable by non-privileged users:",
+                    modifiable,
                     "Restrict write access on these HKLM\\SYSTEM\\CurrentControlSet\\Services keys to administrators; a user who can repoint ImagePath gains the service's privileges.",
                     "CIS - registry permissions");
             }

@@ -33,7 +33,8 @@ namespace IronSharp.Utilities
             else
             {
                 Report.Weak(Category, "Non-privileged-writable %PATH% directories", Severity.High,
-                    writable.Count + " director(ies) writable by non-privileged users: " + Fmt.List(writable),
+                    writable.Count + " director(ies) writable by non-privileged users:",
+                    writable,
                     "Remove write permissions for Users/Everyone on these directories; a planted DLL/binary here can be loaded by privileged processes.",
                     "CIS - file system permissions / DLL search-order hardening");
             }

@@ -12,5 +12,8 @@ namespace IronSharp.Core
         public string Observed;
         public string Recommendation;
         public string Reference;
+        // Optional detail list printed one entry per line under Observed
+        // (e.g. every affected path / service / CVE). Null when there is none.
+        public System.Collections.Generic.List<string> Items;
     }
 }

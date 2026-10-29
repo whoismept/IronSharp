@@ -45,8 +45,8 @@ namespace IronSharp.Utilities
             else
             {
                 Report.Weak(Category, "Unquoted service paths", Severity.Medium,
-                    distinctPaths.Count + " service(s) with an unquoted path containing spaces: " +
-                    Fmt.List(distinctPaths),
+                    distinctPaths.Count + " service(s) with an unquoted path containing spaces:",
+                    distinctPaths,
                     "Wrap each affected service ImagePath in double quotes so a planted binary in a parent folder cannot be launched.",
                     "CIS / common Windows service hardening");
             }

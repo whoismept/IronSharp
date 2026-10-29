@@ -70,12 +70,12 @@ namespace IronSharp.Utilities
             int med = gaps.Count(g => Eq(g.Severity, "medium"));
             int low = gaps.Count - high - med;
             int kev = gaps.Count(g => g.Kev);
-            // Show actively-exploited (KEV) gaps first, then newest.
-            var sample = gaps
+            // List every missing fix, actively-exploited (KEV) first then newest.
+            var affected = gaps
                 .OrderByDescending(g => g.Kev)
                 .ThenByDescending(g => g.Builds[build].Ubr)
-                .Take(8)
-                .Select(g => g.Kev ? g.Id + "*" : g.Id);
+                .Select(g => g.Kev ? g.Id + "*  (ACTIVELY EXPLOITED - CISA KEV)" : g.Id)
+                .ToList();
 
             string kevText = kev > 0
                 ? " " + kev + " are ACTIVELY EXPLOITED (CISA KEV, marked *)."
@@ -84,8 +84,8 @@ namespace IronSharp.Utilities
             Report.Weak(Category, "Windows build is behind on security updates", Severity.High,
                 "Build " + build + "." + ubr + " is below the latest fix revision ." + latest +
                 ". " + gaps.Count + " Windows EoP/RCE CVE fix(es) were released after this revision" +
-                " (High: " + high + ", Medium: " + med + ", Low: " + low + ")." + kevText +
-                " e.g. " + string.Join(", ", sample),
+                " (High: " + high + ", Medium: " + med + ", Low: " + low + ")." + kevText,
+                affected,
                 "Install the latest cumulative update for this build to reach revision ." + latest + " or newer."
                 + (kev > 0 ? " Prioritise: actively-exploited issues are unpatched." : ""),
                 "MSRC Security Update Guide / CISA KEV / Windows release health");
