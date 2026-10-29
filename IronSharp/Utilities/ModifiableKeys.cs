@@ -1,36 +1,51 @@
 ﻿using Microsoft.Win32;
-using System;
-using System.Management;
+using System.Collections.Generic;
 using System.ServiceProcess;
+using IronSharp.Core;
 
 namespace IronSharp.Utilities
 {
     internal class ModifiableKeys
     {
+        private const string Category = "Service configuration";
+
         public static void ModifiableKey()
         {
+            var modifiable = new List<string>();
             ServiceController[] scServices;
-            scServices = ServiceController.GetServices();
+            try
+            {
+                scServices = ServiceController.GetServices();
+            }
+            catch
+            {
+                return;
+            }
+
             foreach (ServiceController sc in scServices)
             {
                 try
                 {
-                    RegistryKey key = Registry.LocalMachine.OpenSubKey("SYSTEM\\CurrentControlSet\\Services\\" + sc.ServiceName);
+                    string subKey = "SYSTEM\\CurrentControlSet\\Services\\" + sc.ServiceName;
+                    RegistryKey key = Registry.LocalMachine.OpenSubKey(subKey);
                     if (RegistryUtilities.IsModifiable(key))
                     {
-                        ManagementObjectSearcher wmiData = new ManagementObjectSearcher(@"root\cimv2", String.Format("SELECT * FROM win32_service WHERE Name LIKE '{0}'", sc.ServiceName));
-                        ManagementObjectCollection data = wmiData.Get();
-                        foreach (ManagementObject result in data)
-                        {
-                            Console.WriteLine("Modifiable key found :" +
-                                         $"{"SYSTEM\\CurrentControlSet\\Services\\" + sc.ServiceName}");
-                        }
+                        modifiable.Add(sc.ServiceName);
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[X] Exception: {ex.Message}");
-                }
+                catch { }
+            }
+
+            if (modifiable.Count == 0)
+            {
+                Report.Ok(Category, "Modifiable service registry keys", "None writable by the current user.");
+            }
+            else
+            {
+                Report.Weak(Category, "User-modifiable service registry keys", Severity.High,
+                    "The current user can modify the registry key of service(s): " + string.Join(", ", modifiable),
+                    "Restrict write access on these HKLM\\SYSTEM\\CurrentControlSet\\Services keys to administrators; a user who can repoint ImagePath gains the service's privileges.",
+                    "CIS - registry permissions");
             }
         }
     }

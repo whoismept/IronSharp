@@ -1,6 +1,5 @@
 using System;
-using Microsoft.Win32;
-
+using IronSharp.Core;
 
 namespace IronSharp
 {
@@ -9,49 +8,36 @@ namespace IronSharp
         static void Main(string[] args)
         {
             Information.Banner();
-            Console.WriteLine("-----------------------");
-            Console.WriteLine("[+] OS Name: " + Utilities.GetWMIQuery.GetOSName());
-            if (!Utilities.GetWMIQuery.GetOSName().Contains("Server"))
-            {
-                Console.WriteLine("[+] Windows Display Version: " + Utilities.RegistryUtilities.GetVersionFromRegistry());
-            }
-            Console.WriteLine("[+] Windows Build Name: " + Utilities.GetWMIQuery.GetBuildNumber());
-            Console.WriteLine("[+] Windows Release ID: " + Utilities.RegistryUtilities.GetReleaseIdFromRegistiry());
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[+] Checking installed Kb list...");
-            var installedKBs = Utilities.GetWMIQuery.GetInstalledKBs();
-            foreach (var kb in installedKBs)
-            {
-                Console.WriteLine("    KB: {0}", kb);
-            }
-            Console.WriteLine("    Installed KB Count: " + installedKBs.Count);
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Listing Unquoted Paths");
-            Utilities.UnquotedPathCheck.CheckUnquotedPath();
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Checking Vulnerabilities");
+            PrintSystemInfo();
+
+            // All checks are read-only: they inspect WMI, the registry and file
+            // ACLs and record findings. Nothing on the system is modified.
             Utilities.CVECheck.CheckAll();
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Hijackable Paths");
+            Utilities.UnquotedPathCheck.CheckUnquotedPath();
             Utilities.HijackablePaths.HighjackablePaths();
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Modifiable binaries saved as Registry AutoRun List");
             Utilities.ModifiableAutorun.CheckAutoRun();
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Modifiable keys");
             Utilities.ModifiableKeys.ModifiableKey();
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Always Install Elevated");
             Utilities.AlwaysInstallElevated.AlwaysInstallElevatedCheck();
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Autologon");
             Utilities.AutoLogon.LoginCheck();
-            Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Av Information");
             Utilities.GetAv.CheckSecurityProduct();
+
+            Report.PrintAll();
+            Report.PrintSummary();
+        }
+
+        private static void PrintSystemInfo()
+        {
             Console.WriteLine("------------------------");
-            Console.WriteLine("[*] Side Load Check");
-            Utilities.CheckTeams.TeamsInstalled();
+            string os = Utilities.GetWMIQuery.GetOSName();
+            Console.WriteLine("[*] OS Name            : " + os);
+            if (os != null && !os.Contains("Server"))
+            {
+                Console.WriteLine("[*] Display Version    : " + Utilities.RegistryUtilities.GetVersionFromRegistry());
+            }
+            Console.WriteLine("[*] Build Number       : " + Utilities.GetWMIQuery.GetBuildNumber());
+            Console.WriteLine("[*] Release ID         : " + Utilities.RegistryUtilities.GetReleaseIdFromRegistiry());
+            Console.WriteLine("[*] Installed KB count : " + Utilities.GetWMIQuery.GetInstalledKBs().Count);
+            Console.WriteLine("------------------------");
         }
     }
 }

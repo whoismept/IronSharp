@@ -1,62 +1,58 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using IronSharp.Core;
 
 namespace IronSharp.Utilities
 {
     internal class CVECheck
     {
+        private const string Category = "Missing updates";
+
         public static void CheckAll()
         {
-            //Name / Description                        Build Number
-            //Windows Server 2012 R2                    9600
-            //Windows 10, Version 1507                  10240
-            //Windows 10, Version 1511                  10586
-            //Windows 10, Version 1607                  14393
-            //Windows Server 2016, Version 1607         14393
-            //Windows 10, Version 1703                  15063
-            //Windows 10, Version 1709                  16299
-            //Windows 10, Version 1803                  17134
-            //Windows Server 2019, Version 1809         17763
-            //Windows 10, Version 1809                  17763
-            //Windows 10, Version 1903                  18362
-            //Windows 10, Version 1909                  18363
-            //Windows Server, Version 1909              18363
-            //Windows 10, Version 2004                  19041
-            //Windows Server, Version 2004              19041
-            //Windows 10, Version 20H2                  19042
-            //Windows Server, Version 20H2              19042
-            //Windows 10, Version 21H1                  19043
-            //Windows 10, Version 21H2                  19044
-            //Windows 10, Version 22H2                  19045
-            //Windows Server 2022                       20348
-            //Windows 11, Version 21H2                  22000
-            //Windows 11, Version 22H2                  22621
-            //Windows 11, Version 23H2                  22631
-            //Windows 11, Version 24H2                  26100
+            var kb = GetWMIQuery.GetInstalledKBs();
+            int build = GetWMIQuery.GetBuildNumber();
 
-            var kblist = Utilities.GetWMIQuery.GetInstalledKBs();
-            var buildnumber = Utilities.GetWMIQuery.GetBuildNumber();
-            CVE.CVE_2019_0836.Check(buildnumber, kblist);
-            CVE.CVE_2019_0841.Check(buildnumber, kblist);
-            CVE.CVE_2019_1064.Check(buildnumber, kblist);
-            CVE.CVE_2019_1130.Check(buildnumber, kblist);
-            CVE.CVE_2019_1253.Check(buildnumber, kblist);
-            CVE.CVE_2019_1315.Check(buildnumber, kblist);
-            CVE.CVE_2019_1385.Check(buildnumber, kblist);
-            CVE.CVE_2019_1388.Check(buildnumber, kblist);
-            CVE.CVE_2019_1405.Check(buildnumber, kblist);
-            CVE.CVE_2020_0668.Check(buildnumber, kblist);
-            CVE.CVE_2020_0683.Check(buildnumber, kblist);
-            CVE.CVE_2020_0787.Check(buildnumber, kblist);
-            CVE.CVE_2020_0796.Check(buildnumber, kblist);
-            CVE.CVE_2020_1013.Check(buildnumber, kblist);
-            CVE.CVE_2021_1732.Check(buildnumber, kblist);
-            CVE.CVE_2021_34527.Check(buildnumber, kblist);
-            CVE.CVE_2021_40449.Check(buildnumber, kblist);
-            CVE.CVE_2022_21882.Check(buildnumber, kblist);
-            CVE.CVE_2021_42278.Check(buildnumber, kblist);
-            CVE.CVE_2023_28252.Check(buildnumber, kblist);
-            CVE.CVE_2024_30088.Check(buildnumber, kblist);
+            int vulnCount = 0;
+            vulnCount += Eval("CVE-2019-0836", "Windows Elevation of Privilege", CVE.CVE_2019_0836.Check(build, kb));
+            vulnCount += Eval("CVE-2019-0841", "Windows AppX Deployment EoP", CVE.CVE_2019_0841.Check(build, kb));
+            vulnCount += Eval("CVE-2019-1064", "Windows Elevation of Privilege", CVE.CVE_2019_1064.Check(build, kb));
+            vulnCount += Eval("CVE-2019-1130", "Windows Elevation of Privilege", CVE.CVE_2019_1130.Check(build, kb));
+            vulnCount += Eval("CVE-2019-1253", "Windows Kernel EoP", CVE.CVE_2019_1253.Check(build, kb));
+            vulnCount += Eval("CVE-2019-1315", "Windows Error Reporting EoP", CVE.CVE_2019_1315.Check(build, kb));
+            vulnCount += Eval("CVE-2019-1385", "Windows AppX Deployment EoP", CVE.CVE_2019_1385.Check(build, kb));
+            vulnCount += Eval("CVE-2019-1388", "Windows UAC / certificate dialog EoP", CVE.CVE_2019_1388.Check(build, kb));
+            vulnCount += Eval("CVE-2019-1405", "Windows UPnP EoP", CVE.CVE_2019_1405.Check(build, kb));
+            vulnCount += Eval("CVE-2020-0668", "Windows Kernel (service tracing) EoP", CVE.CVE_2020_0668.Check(build, kb));
+            vulnCount += Eval("CVE-2020-0683", "Windows Installer EoP", CVE.CVE_2020_0683.Check(build, kb));
+            vulnCount += Eval("CVE-2020-0787", "Windows BITS EoP", CVE.CVE_2020_0787.Check(build, kb));
+            vulnCount += Eval("CVE-2020-0796", "SMBv3 'SMBGhost' RCE/EoP", CVE.CVE_2020_0796.Check(build, kb));
+            vulnCount += Eval("CVE-2020-1013", "WSUS / WPAD EoP", CVE.CVE_2020_1013.Check(build, kb));
+            vulnCount += Eval("CVE-2021-1732", "Win32k EoP (exploited)", CVE.CVE_2021_1732.Check(build, kb));
+            vulnCount += Eval("CVE-2021-34527", "Print Spooler 'PrintNightmare' RCE/EoP", CVE.CVE_2021_34527.Check(build, kb));
+            vulnCount += Eval("CVE-2021-40449", "Win32k EoP (exploited)", CVE.CVE_2021_40449.Check(build, kb));
+            vulnCount += Eval("CVE-2021-42278", "Active Directory sAMAccountName spoofing", CVE.CVE_2021_42278.Check(build, kb));
+            vulnCount += Eval("CVE-2022-21882", "Win32k EoP (exploited)", CVE.CVE_2022_21882.Check(build, kb));
+            vulnCount += Eval("CVE-2023-28252", "CLFS Driver EoP (exploited)", CVE.CVE_2023_28252.Check(build, kb));
+            vulnCount += Eval("CVE-2024-30088", "Windows Kernel EoP (CISA KEV)", CVE.CVE_2024_30088.Check(build, kb));
+
+            if (vulnCount == 0)
+            {
+                Report.Ok(Category, "Known patch-level CVEs",
+                    "No supported CVE matched as unpatched for build " + build + ".");
+            }
+        }
+
+        private static int Eval(string id, string title, bool vulnerable)
+        {
+            if (!vulnerable)
+            {
+                return 0;
+            }
+            Report.Weak(Category, id + " - " + title, Severity.High,
+                "This Windows build appears unpatched (no fixing KB for it was found among installed updates).",
+                "Install the latest cumulative security update for this Windows build.",
+                "Microsoft Security Update Guide: " + id);
+            return 1;
         }
     }
 }

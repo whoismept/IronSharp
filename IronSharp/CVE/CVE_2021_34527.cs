@@ -6,7 +6,7 @@ namespace IronSharp.CVE
 {
     internal class CVE_2021_34527
     {
-        public static void Check(int buildnumber, List<int> installedkblist)
+        public static bool Check(int buildnumber, List<int> installedkblist)
         {
             var vulnkblist = new List<int>();
             switch (buildnumber)
@@ -44,10 +44,7 @@ namespace IronSharp.CVE
                 default:
                     break;
             }
-            if (vulnkblist.Any() && !vulnkblist.Intersect(installedkblist).Any())
-            {
-                Console.WriteLine("Vulnerable for CVE-2021-34527");
-            }
+            return vulnkblist.Any() && !vulnkblist.Intersect(installedkblist).Any();
         }
     }
 }

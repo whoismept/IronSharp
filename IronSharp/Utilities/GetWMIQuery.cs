@@ -60,10 +60,8 @@ namespace IronSharp.Utilities
                     return operatingSystem;
                 }
             }
-            catch (ManagementException e)
+            catch
             {
-                Console.WriteLine("[!] {0}",e.Message);
-                throw;
             }
             return "";
         }

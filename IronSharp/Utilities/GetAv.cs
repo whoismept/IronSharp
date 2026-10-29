@@ -1,30 +1,37 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Management;
+using IronSharp.Core;
 
 namespace IronSharp.Utilities
 {
     public class GetAv
     {
+        private const string Category = "Endpoint defense";
+
         public static void CheckSecurityProduct()
         {
-            bool found = false;
+            var products = new List<string>();
+            CollectFromNamespace(@"root\SecurityCenter2", products);
+            CollectFromNamespace(@"root\SecurityCenter", products);
 
-            // SecurityCenter2 is the namespace used on Windows Vista and later.
-            // The old SecurityCenter namespace only exists on XP-era systems and
-            // throws on modern Windows, so query it defensively.
-            found |= QueryNamespace(@"root\SecurityCenter2");
-            found |= QueryNamespace(@"root\SecurityCenter");
-
-            if (!found)
+            var distinct = products.Distinct().ToList();
+            if (distinct.Count > 0)
             {
-                Console.WriteLine("[-] No registered AV/EDR product reported by SecurityCenter.");
+                Report.Ok(Category, "Antivirus / EDR registered", string.Join(", ", distinct));
+            }
+            else
+            {
+                Report.Weak(Category, "No antivirus / EDR registered", Severity.Medium,
+                    "Windows Security Center reports no registered antivirus product.",
+                    "Ensure a supported AV/EDR (e.g. Microsoft Defender) is installed, running and up to date.",
+                    "MS Security Baseline - Defender");
             }
         }
 
-        private static bool QueryNamespace(string wmiNamespace)
+        private static void CollectFromNamespace(string wmiNamespace, List<string> products)
         {
-            bool any = false;
             try
             {
                 var scope = string.Format(@"\\{0}\{1}", Environment.MachineName, wmiNamespace);
@@ -32,12 +39,11 @@ namespace IronSharp.Utilities
                 {
                     foreach (var instance in searcher.Get().OfType<ManagementObject>())
                     {
-                        var props = instance.Properties.OfType<PropertyData>();
-                        var nameProp = props.FirstOrDefault(p => p.Name == "displayName");
+                        var nameProp = instance.Properties.OfType<PropertyData>()
+                            .FirstOrDefault(p => p.Name == "displayName");
                         if (nameProp != null && nameProp.Value != null)
                         {
-                            Console.WriteLine("[+] {0}", nameProp.Value);
-                            any = true;
+                            products.Add(nameProp.Value.ToString());
                         }
                     }
                 }
@@ -50,7 +56,6 @@ namespace IronSharp.Utilities
             {
                 Console.Error.WriteLine("[!] AV query failed ({0}): {1}", wmiNamespace, e.Message);
             }
-            return any;
         }
     }
 }

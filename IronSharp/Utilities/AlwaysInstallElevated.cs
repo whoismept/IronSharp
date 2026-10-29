@@ -1,5 +1,5 @@
 ﻿using Microsoft.Win32;
-using System;
+using IronSharp.Core;
 
 namespace IronSharp.Utilities
 {
@@ -7,25 +7,30 @@ namespace IronSharp.Utilities
     {
         private const string SubKey = @"SOFTWARE\Policies\Microsoft\Windows\Installer";
         private const string ValueName = "AlwaysInstallElevated";
+        private const string Category = "Privilege escalation";
 
         public static void AlwaysInstallElevatedCheck()
         {
-            // The policy is only exploitable when BOTH HKLM and HKCU are set to 1.
             bool hklm = ReadDword(Registry.LocalMachine) == 1;
             bool hkcu = ReadDword(Registry.CurrentUser) == 1;
 
             if (hklm && hkcu)
             {
-                Console.WriteLine("[+] AlwaysInstallElevated is enabled in BOTH HKLM and HKCU - exploitable.");
+                Report.Weak(Category, "AlwaysInstallElevated enabled", Severity.High,
+                    "Policy is set to 1 in both HKLM and HKCU - any MSI runs as SYSTEM.",
+                    "Disable AlwaysInstallElevated in both Computer and User policy (set to 0 or Not Configured).",
+                    "CIS 'Always install with elevated privileges' / MS Security Baseline");
             }
             else if (hklm || hkcu)
             {
-                Console.WriteLine("[-] AlwaysInstallElevated is only set in {0} - not exploitable on its own (both hives must be 1).",
-                    hklm ? "HKLM" : "HKCU");
+                Report.Weak(Category, "AlwaysInstallElevated partially set", Severity.Low,
+                    "Policy is set in only " + (hklm ? "HKLM" : "HKCU") + " - not exploitable alone, but should be cleared.",
+                    "Set AlwaysInstallElevated to 0 / Not Configured in both hives.",
+                    "CIS 'Always install with elevated privileges'");
             }
             else
             {
-                Console.WriteLine("[-] AlwaysInstallElevated is not enabled.");
+                Report.Ok(Category, "AlwaysInstallElevated", "Not enabled.");
             }
         }
 

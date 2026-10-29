@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("IronSharp")]
-[assembly: AssemblyDescription("Ironsharp is a tool written in C# that detects CVEs caused by missing updates and privilege escalation vulnerabilities caused by misconfigurations on Windows OS.")]
+[assembly: AssemblyDescription("IronSharp is a read-only Windows hardening advisor written in C#: it audits the local system for missing-update CVEs and security misconfigurations and reports recommended hardening, without changing anything.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("IronSharp")]
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.2.0.0")]
+[assembly: AssemblyFileVersion("1.2.0.0")]

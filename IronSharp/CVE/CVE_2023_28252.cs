@@ -10,7 +10,7 @@ namespace IronSharp.CVE
     // Vulnerabilities catalog; allows a local attacker to gain SYSTEM.
     internal class CVE_2023_28252
     {
-        public static void Check(int buildnumber, List<int> installedkblist)
+        public static bool Check(int buildnumber, List<int> installedkblist)
         {
             var vulnkblist = new List<int>();
             switch (buildnumber)
@@ -38,10 +38,7 @@ namespace IronSharp.CVE
                 default:
                     break;
             }
-            if (vulnkblist.Any() && !vulnkblist.Intersect(installedkblist).Any())
-            {
-                Console.WriteLine("Vulnerable for CLFS Driver EoP (CVE-2023-28252)");
-            }
+            return vulnkblist.Any() && !vulnkblist.Intersect(installedkblist).Any();
         }
     }
 }
