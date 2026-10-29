@@ -12,6 +12,15 @@ Remediation is left to you (Group Policy, `secpol`, your baseline tooling).
 Use it for authorized hardening reviews, baseline gap analysis, pentest
 enumeration and CTFs.
 
+## The name
+
+**Iron** for resilience, **Sharp** for C# — and together a nod to the old
+proverb, *"as iron sharpens iron."* A blade is made keen not by striking the
+enemy but by being worked against iron. IronSharp is that whetstone for a Windows
+host: it never swings at an attacker and never touches an edge in anger — it only
+reads — yet by surfacing every soft spot and dull seam it leaves the system
+sharper, harder, and ready.
+
 ---
 
 ## What it checks
