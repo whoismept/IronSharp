@@ -73,6 +73,40 @@ namespace IronSharp.Checks
                     "Re-enable real-time protection (DisableRealtimeMonitoring = 0 / Not Configured).",
                     "MS Security Baseline - real-time protection");
             }
+            // Cloud-delivered protection (MAPS). Flag only when explicitly off.
+            int? maps = RegistryUtilities.GetHklmDword(@"SOFTWARE\Policies\Microsoft\Windows Defender\Spynet", "SpynetReporting");
+            if (!maps.HasValue)
+            {
+                maps = RegistryUtilities.GetHklmDword(@"SOFTWARE\Microsoft\Windows Defender\Spynet", "SpynetReporting");
+            }
+            if (maps.HasValue && maps.Value == 0)
+            {
+                Report.Weak(Category, "Defender cloud-delivered protection off", Severity.Medium,
+                    "SpynetReporting = 0 - MAPS / cloud-delivered protection is disabled.",
+                    "Enable cloud-delivered protection (MAPS) if Microsoft Defender is your AV.",
+                    "MS Security Baseline - Defender MAPS");
+            }
+
+            // Potentially Unwanted Application protection. Flag only when explicitly disabled.
+            int? pua = RegistryUtilities.GetHklmDword(@"SOFTWARE\Policies\Microsoft\Windows Defender", "PUAProtection");
+            if (pua.HasValue && pua.Value == 0)
+            {
+                Report.Weak(Category, "Defender PUA protection disabled", Severity.Low,
+                    "PUAProtection = 0 - potentially unwanted application protection is off.",
+                    "Enable PUA protection (PUAProtection = 1) if Microsoft Defender is your AV.",
+                    "MS Defender - PUA protection");
+            }
+
+            // Tamper Protection. Often unreadable (by design); flag only a clear 'off'.
+            int? tamper = RegistryUtilities.GetHklmDword(@"SOFTWARE\Microsoft\Windows Defender\Features", "TamperProtection");
+            if (tamper.HasValue && tamper.Value == 4)
+            {
+                Report.Weak(Category, "Defender Tamper Protection off", Severity.Medium,
+                    "TamperProtection = 4 - Tamper Protection is disabled.",
+                    "Enable Tamper Protection (via Windows Security / Intune) to protect Defender settings.",
+                    "MS Defender - Tamper Protection");
+            }
+
             // No finding when the keys are absent/unreadable (secure default or Tamper Protection).
         }
 

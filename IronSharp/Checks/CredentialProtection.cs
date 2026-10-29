@@ -13,7 +13,28 @@ namespace IronSharp.Checks
             WDigest();
             LsaProtection();
             LmLevel();
+            NtlmOutbound();
             CachedLogons();
+        }
+
+        private static void NtlmOutbound()
+        {
+            // 0/absent = send NTLM to all servers, 1 = audit, 2 = deny (to remote servers).
+            int? v = RegistryUtilities.GetHklmDword(
+                @"SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0", "RestrictSendingNTLMTraffic");
+            if (v.HasValue && v.Value >= 1)
+            {
+                Report.Ok(Category, "Outgoing NTLM restriction",
+                    "RestrictSendingNTLMTraffic = " + v.Value + " (" + (v.Value == 2 ? "deny" : "audit") + ").");
+            }
+            else
+            {
+                Report.Weak(Category, "Outgoing NTLM unrestricted", Severity.Low,
+                    "RestrictSendingNTLMTraffic is " + (v.HasValue ? v.Value.ToString() : "not set") +
+                    " - the host may send NTLM to any server (relay / credential exposure).",
+                    "Restrict outgoing NTLM. Start in audit mode (1), then move to deny (2) once compatibility is confirmed.",
+                    "CIS - 'Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers'");
+            }
         }
 
         private static void WDigest()

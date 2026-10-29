@@ -13,9 +13,27 @@ namespace IronSharp.Checks
         {
             Smb1();
             SmbSigning();
+            SmbEncryption();
             Llmnr();
             NbtNs();
             LegacyTls();
+        }
+
+        private static void SmbEncryption()
+        {
+            int? v = RegistryUtilities.GetHklmDword(
+                @"SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters", "RequireEncryption");
+            if (v.HasValue && v.Value == 1)
+            {
+                Report.Ok(Category, "SMB encryption", "Required on the SMB server (RequireEncryption = 1).");
+            }
+            else
+            {
+                Report.Weak(Category, "SMB encryption not required", Severity.Low,
+                    "LanmanServer RequireEncryption is not 1 - SMBv3 traffic may be unencrypted.",
+                    "Consider requiring SMB encryption for sensitive shares (verify legacy-client compatibility first).",
+                    "Microsoft - SMB security hardening");
+            }
         }
 
         private static void Smb1()
