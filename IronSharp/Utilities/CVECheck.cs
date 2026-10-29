@@ -34,6 +34,8 @@ namespace IronSharp.Utilities
             vulnCount += Eval("CVE-2022-21882", "Win32k EoP (exploited)", CVE.CVE_2022_21882.Check(build, kb));
             vulnCount += Eval("CVE-2023-28252", "CLFS Driver EoP (exploited)", CVE.CVE_2023_28252.Check(build, kb));
             vulnCount += Eval("CVE-2024-30088", "Windows Kernel EoP (CISA KEV)", CVE.CVE_2024_30088.Check(build, kb));
+            vulnCount += Eval("CVE-2025-24983", "Win32k EoP (CISA KEV, legacy builds)", CVE.CVE_2025_24983.Check(build, kb));
+            vulnCount += Eval("CVE-2025-29824", "CLFS Driver EoP (CISA KEV)", CVE.CVE_2025_29824.Check(build, kb));
 
             if (vulnCount == 0)
             {
