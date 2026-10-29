@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Refresh IronSharp's CVE / missing-update dataset from the MSRC CVRF API.
 
-Fetches the last N monthly security-update documents from the public Microsoft
-Security Response Center (MSRC) CVRF v3.0 API, extracts Windows Elevation of
-Privilege and Remote Code Execution CVEs with their per-build fixing KBs, merges
-them with the existing dataset (so curated historical entries are preserved),
-and writes IronSharp/Data/cve-data.json.
+Fetches recent monthly MSRC CVRF v3.0 documents, extracts Windows Elevation of
+Privilege and Remote Code Execution CVEs and, for each affected Windows build,
+the fixed build revision (UBR) from the remediation's FixedBuild (e.g.
+10.0.19045.5679). IronSharp then flags a build as behind when its UBR is below
+the fixed revision - which avoids the false positives of matching exact KB
+numbers (superseded cumulative updates drop out of the installed list).
 
-Runs in CI (GitHub-hosted runners have internet). Uses only the Python standard
-library. Read-only against MSRC; it never contacts the audited machines.
+Writes IronSharp/Data/cve-data.json. Runs in CI (internet required). Standard
+library only. Read-only against MSRC.
 
 Usage: python tools/update_cve_data.py [--months N] [--out PATH]
 """
@@ -24,9 +25,11 @@ import urllib.request
 API_BASE = "https://api.msrc.microsoft.com/cvrf/v3.0"
 DEFAULT_OUT = os.path.join("IronSharp", "Data", "cve-data.json")
 IMPACTS = {"elevation of privilege", "remote code execution"}
+CVE_RE = re.compile(r"^CVE-\d{4}-\d+$")
+FIXEDBUILD_RE = re.compile(r"^\d+\.\d+\.(\d+)\.(\d+)$")  # X.Y.BUILD.REV
 
-# Map an MSRC product name to the base build number IronSharp compares against.
-# Order matters: more specific tokens first.
+
+# Fallback product-name -> base build (only used when FixedBuild is absent).
 def product_to_build(name):
     n = name.lower()
     is_win11 = "windows 11" in n
@@ -42,7 +45,7 @@ def product_to_build(name):
     if "version 22h2" in n:
         return 22621 if is_win11 else (19045 if is_win10 else None)
     if "version 23h2" in n:
-        return 22631 if is_win11 else None  # Server 23H2 (25398) intentionally skipped
+        return 22631 if is_win11 else None
     if "version 24h2" in n:
         return 26100
     if "windows server 2025" in n:
@@ -68,15 +71,12 @@ def http_json(url):
 
 
 def value(obj):
-    """CVRF wraps many fields as {"Value": ...}."""
     if isinstance(obj, dict):
         return obj.get("Value")
     return obj
 
 
 def severity_from_cvss(score):
-    if score is None:
-        return "High"
     try:
         s = float(score)
     except (TypeError, ValueError):
@@ -90,24 +90,23 @@ def severity_from_cvss(score):
 
 def recent_update_ids(months):
     data = http_json(API_BASE + "/updates")
+    rows = data.get("value", data if isinstance(data, list) else [])
     ids = []
-    for entry in data.get("value", data if isinstance(data, list) else []):
+    for entry in rows:
         cid = entry.get("ID") or entry.get("id")
-        rel = entry.get("CurrentReleaseDate") or entry.get("InitialReleaseDate")
+        rel = entry.get("CurrentReleaseDate") or entry.get("InitialReleaseDate") or ""
         if cid:
-            ids.append((rel or "", cid))
+            ids.append((rel, cid))
     ids.sort()
     return [cid for _, cid in ids[-months:]]
 
 
-def parse_document(doc):
-    """Return {cve_id: {"title","severity","builds":{build:set(kb)}}}."""
+def parse_document(doc, stats):
+    """Return {cve: {"title","severity","builds":{base:{"ubr":int,"kb":int}}}}."""
     out = {}
 
-    # ProductID -> product name
     products = {}
-    tree = doc.get("ProductTree", {})
-    for fp in tree.get("FullProductName", []):
+    for fp in doc.get("ProductTree", {}).get("FullProductName", []):
         pid = fp.get("ProductID")
         name = value(fp) or fp.get("Value")
         if pid and name:
@@ -115,10 +114,9 @@ def parse_document(doc):
 
     for vuln in doc.get("Vulnerability", []):
         cve = vuln.get("CVE")
-        if not cve:
+        if not cve or not CVE_RE.match(cve):
             continue
 
-        # Impact must be EoP or RCE (Threat Type 0 = Impact).
         impacts = set()
         for th in vuln.get("Threats", []):
             if th.get("Type") == 0:
@@ -128,7 +126,6 @@ def parse_document(doc):
         if not (impacts & IMPACTS):
             continue
 
-        # Severity from the highest CVSS base score.
         score = None
         for css in vuln.get("CVSSScoreSets", []):
             bs = css.get("BaseScore")
@@ -140,27 +137,66 @@ def parse_document(doc):
             if rem.get("Type") != 2:  # 2 = Vendor Fix
                 continue
             kb_text = (value(rem.get("Description")) or "").strip()
-            if not re.fullmatch(r"\d+", kb_text):
-                continue
-            kb = int(kb_text)
-            for pid in rem.get("ProductID", []):
-                name = products.get(pid)
-                if not name:
-                    continue
-                build = product_to_build(name)
-                if build is None:
-                    continue
-                builds.setdefault(build, set()).add(kb)
+            kb = int(kb_text) if re.fullmatch(r"\d+", kb_text) else None
+
+            fixed = (rem.get("FixedBuild") or "").strip()
+            m = FIXEDBUILD_RE.match(fixed)
+            if m:
+                stats["with_fixedbuild"] += 1
+                base, ubr = int(m.group(1)), int(m.group(2))
+                _add(builds, base, ubr, kb)
+            else:
+                stats["without_fixedbuild"] += 1
+                # No revision available: map by product name, ubr unknown (0).
+                for pid in rem.get("ProductID", []):
+                    base = product_to_build(products.get(pid, ""))
+                    if base is not None:
+                        _add(builds, base, 0, kb)
 
         if not builds:
             continue
 
-        title = value(vuln.get("Title")) or "Windows security update"
-        rec = out.setdefault(cve, {"title": title, "severity": severity_from_cvss(score), "builds": {}})
-        for b, kbs in builds.items():
-            rec["builds"].setdefault(b, set()).update(kbs)
+        rec = out.setdefault(cve, {"title": value(vuln.get("Title")) or "Windows security update",
+                                   "severity": severity_from_cvss(score), "builds": {}})
+        for base, fix in builds.items():
+            _merge_fix(rec["builds"], base, fix)
 
     return out
+
+
+def _add(builds, base, ubr, kb):
+    cur = builds.get(base)
+    if cur is None:
+        builds[base] = {"ubr": ubr, "kb": kb}
+    else:
+        # Prefer the smallest non-zero UBR (earliest revision that fixes it).
+        if ubr and (cur["ubr"] == 0 or ubr < cur["ubr"]):
+            cur["ubr"] = ubr
+        if kb and not cur.get("kb"):
+            cur["kb"] = kb
+
+
+def _merge_fix(builds, base, fix):
+    cur = builds.get(base)
+    if cur is None:
+        builds[base] = dict(fix)
+    else:
+        if fix["ubr"] and (cur["ubr"] == 0 or fix["ubr"] < cur["ubr"]):
+            cur["ubr"] = fix["ubr"]
+        if fix.get("kb") and not cur.get("kb"):
+            cur["kb"] = fix["kb"]
+
+
+def merge(base, new):
+    for cve, rec in new.items():
+        tgt = base.setdefault(cve, {"title": rec["title"], "severity": rec["severity"], "builds": {}})
+        if rec.get("title"):
+            tgt["title"] = rec["title"]
+        if rec.get("severity"):
+            tgt["severity"] = rec["severity"]
+        for b, fix in rec["builds"].items():
+            _merge_fix(tgt["builds"], int(b), fix)
+    return base
 
 
 def load_existing(path):
@@ -170,53 +206,47 @@ def load_existing(path):
         data = json.load(f)
     out = {}
     for c in data.get("cves", []):
+        if not CVE_RE.match(str(c.get("id", ""))):
+            continue
         builds = {}
-        for b, kbs in (c.get("builds") or {}).items():
-            builds[int(b)] = set(kbs)
+        for b, fix in (c.get("builds") or {}).items():
+            if isinstance(fix, dict):
+                builds[int(b)] = {"ubr": int(fix.get("ubr", 0)), "kb": fix.get("kb")}
         out[c["id"]] = {"title": c.get("title", ""), "severity": c.get("severity", "High"), "builds": builds}
     return out
-
-
-def merge(base, new):
-    for cve, rec in new.items():
-        if cve not in base:
-            base[cve] = {"title": rec["title"], "severity": rec["severity"], "builds": {}}
-        # Prefer the fresh MSRC title/severity when present.
-        if rec.get("title"):
-            base[cve]["title"] = rec["title"]
-        if rec.get("severity"):
-            base[cve]["severity"] = rec["severity"]
-        for b, kbs in rec["builds"].items():
-            base[cve]["builds"].setdefault(b, set()).update(kbs)
-    return base
 
 
 def to_document(merged):
     cves = []
     for cve in sorted(merged):
         rec = merged[cve]
-        builds = {str(b): sorted(rec["builds"][b]) for b in sorted(rec["builds"])}
-        cves.append({
-            "id": cve,
-            "title": rec["title"],
-            "severity": rec["severity"],
-            "builds": builds,
-        })
+        builds = {}
+        for b in sorted(rec["builds"]):
+            fix = rec["builds"][b]
+            entry = {"ubr": fix.get("ubr", 0)}
+            if fix.get("kb"):
+                entry["kb"] = fix["kb"]
+            builds[str(b)] = entry
+        if not builds:
+            continue
+        cves.append({"id": cve, "title": rec["title"], "severity": rec["severity"], "builds": builds})
     return {
         "generated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "MSRC CVRF v3.0 (api.msrc.microsoft.com); maintained by tools/update_cve_data.py",
+        "schema": "build -> {ubr: fixed revision, kb: article}",
         "cves": cves,
     }
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--months", type=int, default=24, help="how many recent months to pull")
+    ap.add_argument("--months", type=int, default=24)
     ap.add_argument("--out", default=DEFAULT_OUT)
     args = ap.parse_args()
 
     merged = load_existing(args.out)
     before = json.dumps(to_document(merged), sort_keys=True)
+    stats = {"with_fixedbuild": 0, "without_fixedbuild": 0}
 
     try:
         ids = recent_update_ids(args.months)
@@ -230,13 +260,13 @@ def main():
         except Exception as e:
             print("Skip", cid, ":", e, file=sys.stderr)
             continue
-        found = parse_document(doc)
-        merge(merged, found)
+        merge(merged, parse_document(doc, stats))
         print("Processed", cid, "- cumulative CVEs:", len(merged))
 
+    print("FixedBuild coverage: {with_fixedbuild} with revision, {without_fixedbuild} without".format(**stats))
+
     document = to_document(merged)
-    after = json.dumps(document, sort_keys=True)
-    if after == before:
+    if json.dumps(document, sort_keys=True) == before:
         print("No dataset changes.")
         return 0
 

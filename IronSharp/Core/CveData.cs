@@ -7,19 +7,23 @@ using System.Web.Script.Serialization;
 
 namespace IronSharp.Core
 {
-    // One CVE entry from the data file: which fixing KBs apply per Windows build.
+    // The fix for a CVE on one Windows base build: the build revision (UBR) that
+    // first addressed it, plus the KB article for reference. A machine is behind
+    // on this CVE when its UBR is below Ubr.
+    internal class BuildFix
+    {
+        public int Ubr;
+        public int Kb;
+    }
+
     internal class CveRecord
     {
         public string Id;
         public string Title;
         public string Severity;
-        public Dictionary<int, int[]> Builds = new Dictionary<int, int[]>();
+        public Dictionary<int, BuildFix> Builds = new Dictionary<int, BuildFix>();
     }
 
-    // Loads the CVE / missing-update dataset. The dataset ships embedded
-    // (offline) and can be refreshed by tools/update_cve_data.py via CI, or
-    // downloaded at runtime with --online. Parsing uses JavaScriptSerializer
-    // (System.Web.Extensions) so there is no external dependency.
     internal static class CveData
     {
         public static string LoadEmbeddedJson()
@@ -74,15 +78,8 @@ namespace IronSharp.Core
                         {
                             int b;
                             if (!int.TryParse(kv.Key, out b)) continue;
-                            var arr = kv.Value as object[];
-                            if (arr == null) continue;
-                            var kbs = new List<int>();
-                            foreach (var n in arr)
-                            {
-                                try { kbs.Add(Convert.ToInt32(n)); }
-                                catch { }
-                            }
-                            rec.Builds[b] = kbs.ToArray();
+                            var fix = ParseFix(kv.Value);
+                            if (fix != null) rec.Builds[b] = fix;
                         }
                     }
                     records.Add(rec);
@@ -90,9 +87,38 @@ namespace IronSharp.Core
             }
             catch
             {
-                // Malformed data: return whatever parsed so far (possibly empty).
+                // Malformed data: return whatever parsed so far.
             }
             return records;
+        }
+
+        // Accepts the current schema {"ubr":N,"kb":M} and tolerates the older
+        // KB-array schema [kb, ...] (treated as Ubr=0 so it is skipped by the
+        // revision-based check rather than causing false positives).
+        private static BuildFix ParseFix(object value)
+        {
+            var obj = value as Dictionary<string, object>;
+            if (obj != null)
+            {
+                return new BuildFix
+                {
+                    Ubr = ToInt(obj.ContainsKey("ubr") ? obj["ubr"] : null),
+                    Kb = ToInt(obj.ContainsKey("kb") ? obj["kb"] : null)
+                };
+            }
+            var arr = value as object[];
+            if (arr != null)
+            {
+                return new BuildFix { Ubr = 0, Kb = arr.Length > 0 ? ToInt(arr[0]) : 0 };
+            }
+            return null;
+        }
+
+        private static int ToInt(object o)
+        {
+            if (o == null) return 0;
+            try { return Convert.ToInt32(o); }
+            catch { return 0; }
         }
 
         private static string AsString(Dictionary<string, object> d, string key)

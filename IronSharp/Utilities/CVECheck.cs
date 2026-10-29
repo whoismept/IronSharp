@@ -8,61 +8,83 @@ namespace IronSharp.Utilities
     {
         private const string Category = "Missing updates";
 
-        // Uses the embedded dataset.
         public static void CheckAll()
         {
             CheckAll(null);
         }
 
-        // overrideJson: when supplied (e.g. from --online), use it instead of the
-        // embedded dataset.
+        // overrideJson: when supplied (e.g. from --online or --data) it is used
+        // instead of the embedded dataset.
         public static void CheckAll(string overrideJson)
         {
-            var kb = GetWMIQuery.GetInstalledKBs();
             int build = GetWMIQuery.GetBuildNumber();
+            int? ubrNullable = RegistryUtilities.GetHklmDword(
+                @"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "UBR");
 
             string json = overrideJson ?? CveData.LoadEmbeddedJson();
             var records = CveData.Load(json);
 
-            int vuln = 0;
+            // Gather, for this build, the CVE fixes that carry a revision (UBR).
+            int latest = 0;
+            var gaps = new List<CveRecord>();
+            int covered = 0;
             foreach (var rec in records)
             {
-                int[] kbsForBuild;
-                if (!rec.Builds.TryGetValue(build, out kbsForBuild) || kbsForBuild.Length == 0)
+                BuildFix fix;
+                if (!rec.Builds.TryGetValue(build, out fix) || fix.Ubr <= 0)
                 {
-                    continue; // this build is not listed as affected
+                    continue;
                 }
-                bool patched = kbsForBuild.Any(k => kb.Contains(k));
-                if (!patched)
+                covered++;
+                if (fix.Ubr > latest) latest = fix.Ubr;
+                if (ubrNullable.HasValue && ubrNullable.Value < fix.Ubr)
                 {
-                    Report.Weak(Category, rec.Id + " - " + rec.Title, ParseSeverity(rec.Severity),
-                        "This Windows build appears unpatched (no fixing KB for it was found among installed updates).",
-                        "Install the latest cumulative security update for this Windows build.",
-                        "Microsoft Security Update Guide: " + rec.Id);
-                    vuln++;
+                    gaps.Add(rec);
                 }
             }
 
-            if (vuln == 0)
+            if (covered == 0)
             {
-                Report.Ok(Category, "Known patch-level CVEs",
-                    "No listed CVE matched as unpatched for build " + build +
-                    " (" + records.Count + " CVEs in dataset).");
+                Report.Ok(Category, "Patch level",
+                    "No build-revision data for build " + build + " in the dataset (" + records.Count + " CVEs).");
+                return;
             }
+            if (!ubrNullable.HasValue)
+            {
+                Report.Weak(Category, "Patch level could not be determined", Severity.Low,
+                    "The build revision (UBR) could not be read, so missing updates cannot be assessed.",
+                    "Run from an elevated prompt, or check Windows Update manually.",
+                    "Windows release health");
+                return;
+            }
+
+            int ubr = ubrNullable.Value;
+            if (gaps.Count == 0)
+            {
+                Report.Ok(Category, "Patch level",
+                    "Build " + build + "." + ubr + " is at or above the latest fix revision in the dataset (." + latest + ").");
+                return;
+            }
+
+            int high = gaps.Count(g => Eq(g.Severity, "high"));
+            int med = gaps.Count(g => Eq(g.Severity, "medium"));
+            int low = gaps.Count - high - med;
+            var sample = gaps
+                .OrderByDescending(g => g.Builds[build].Ubr)
+                .Take(8)
+                .Select(g => g.Id);
+
+            Report.Weak(Category, "Windows build is behind on security updates", Severity.High,
+                "Build " + build + "." + ubr + " is below the latest fix revision ." + latest +
+                ". " + gaps.Count + " Windows EoP/RCE CVE fix(es) were released after this revision" +
+                " (High: " + high + ", Medium: " + med + ", Low: " + low + "). e.g. " + string.Join(", ", sample),
+                "Install the latest cumulative update for this build to reach revision ." + latest + " or newer.",
+                "MSRC Security Update Guide / Windows release health");
         }
 
-        private static Severity ParseSeverity(string s)
+        private static bool Eq(string a, string b)
         {
-            if (s != null)
-            {
-                switch (s.Trim().ToLowerInvariant())
-                {
-                    case "high": return Severity.High;
-                    case "medium": return Severity.Medium;
-                    case "low": return Severity.Low;
-                }
-            }
-            return Severity.High;
+            return a != null && a.Trim().ToLowerInvariant() == b;
         }
     }
 }

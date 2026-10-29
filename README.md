@@ -57,23 +57,26 @@ A final **Summary** lists the count of weaknesses by severity.
 
 ### How the missing-update (CVE) check works
 
-The CVE/update data lives in a dataset (`IronSharp/Data/cve-data.json`) that maps
-each CVE to the per-build KB update(s) that fix it. The dataset ships **embedded**
-in the binary, so the check runs fully offline. It reads the build number and the
-installed KBs and flags a CVE as *potentially vulnerable* when the machine runs an
-affected build **and none** of the fixing KBs is installed. The build revision
-(UBR) is shown in the header so you can see the exact patch level.
+The dataset (`IronSharp/Data/cve-data.json`) maps each CVE, per Windows base
+build, to the **build revision (UBR)** that first fixed it (e.g. `19045 → .5679`).
+The check reads the machine's base build and its UBR and reports it as **behind**
+when the UBR is below a fixing revision. Because Windows cumulative updates are
+revision-monotonic, this avoids the false positives of matching exact KB numbers
+(a superseded KB drops out of the installed list on a fully-patched machine).
+
+Rather than one finding per CVE, the result is a single summary: *"build X.UBR is
+below the latest fix revision .R; N EoP/RCE fixes were released after it"* — i.e.
+how far behind the host is and what remains, with the remedy being the latest
+cumulative update.
 
 The dataset is **kept current automatically**: a scheduled GitHub Action
 (`tools/update_cve_data.py` + `update-data.yml`) pulls recent Windows EoP/RCE CVEs
-and their fixing KBs from the official **MSRC CVRF API** and commits an updated
-`cve-data.json`. You can also run `IronSharp.exe --online` to fetch the latest
-dataset at run time (requires internet on the audited host; otherwise the embedded
-copy is used).
+and their fixed build revisions from the official **MSRC CVRF API** and commits an
+updated `cve-data.json`. You can also run `IronSharp.exe --online` (or `--data`) to
+use a fresher dataset without rebuilding.
 
-> **Accuracy note.** This is a heuristic: a machine patched by a **later**
-> cumulative update that supersedes the listed KB may still be reported. Confirm
-> any finding against the current patch level.
+> **Note.** Assessment needs the build revision (UBR), which reads best from an
+> elevated prompt. Always confirm against Windows Update before acting.
 
 ---
 
