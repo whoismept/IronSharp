@@ -16,9 +16,6 @@ namespace IronSharp
 
         Read-only Windows hardening advisor (nothing is modified)
 
-            Mert Daş     @merterpreter
-            Mert Umut    @whoismept
-
 ";
             Console.WriteLine(bannerText);
         }
