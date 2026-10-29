@@ -56,17 +56,3 @@ jobs:
           else
             echo "No changes to commit."
           fi
-
-      - name: Refresh dataset asset on the latest release
-        if: steps.gate.outputs.run == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Keep --online (which reads the latest release's asset) current.
-          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
-          if [ -n "$tag" ]; then
-            gh release upload "$tag" IronSharp/Data/cve-data.json --repo "$GITHUB_REPOSITORY" --clobber
-            echo "Updated cve-data.json asset on release $tag."
-          else
-            echo "No release found; skipping asset refresh."
-          fi

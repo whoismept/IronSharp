@@ -10,9 +10,9 @@ namespace IronSharp
     internal class Program
     {
         private const string OnlineDataUrl =
-            "https://github.com/whoismept/IronSharp/releases/latest/download/cve-data.json";
+            "https://raw.githubusercontent.com/whoismept/IronSharp/master/IronSharp/Data/cve-data.json";
         private const string OnlineThirdPartyDataUrl =
-            "https://github.com/whoismept/IronSharp/releases/latest/download/thirdparty-cve-data.json";
+            "https://raw.githubusercontent.com/whoismept/IronSharp/master/IronSharp/Data/thirdparty-cve-data.json";
 
         static void Main(string[] args)
         {
