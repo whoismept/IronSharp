@@ -1,56 +1,74 @@
 # IronSharp
 
-IronSharp is a Windows privilege-escalation **auditing** tool written in C#.
-It inspects the local machine for two classes of issues:
+IronSharp is a **read-only Windows hardening advisor** written in C#. It audits
+the local machine against common external-threat and privilege-escalation
+weaknesses and reports, for each finding, a **severity**, the **observed state**,
+a **recommended hardening action** and a **reference** to a relevant baseline.
 
-1. **Missing security updates** that leave known, patchable CVEs exposed.
-2. **Misconfigurations** that can be abused to escalate privileges
-   (writable service paths, modifiable autoruns, weak policies, etc.).
+It is strictly read-only: IronSharp only reads WMI, the registry and file ACLs.
+It **never changes anything** — no settings are written, no features toggled.
+Remediation is left to you (Group Policy, `secpol`, your baseline tooling).
 
-It is **read-only**: IronSharp only reads system state (WMI, the registry and
-the filesystem ACLs) and prints what it finds. It does not exploit anything,
-install anything, or modify the host in any way. Think of it as an enumeration
-aid for authorized penetration tests, CTFs and hardening reviews, similar in
-spirit to WinPEAS or Seatbelt but focused and lightweight.
+Use it for authorized hardening reviews, baseline gap analysis, pentest
+enumeration and CTFs.
 
 ---
 
 ## What it checks
 
-| Check | What it reports | Why it matters |
-|-------|-----------------|----------------|
-| **System info** | OS name, display version, build number, release ID | Establishes the exact build so CVE results are meaningful |
-| **Installed updates** | The list of installed KB hotfixes and their count | Basis for the missing-update checks below |
-| **Missing-update CVEs** | Known local privilege-escalation CVEs that the current build appears unpatched against | Unpatched LPE bugs are the most direct SYSTEM path |
-| **Unquoted service paths** | Service `ImagePath` values that contain spaces but no quotes (outside System32) | A writable parent folder can let an attacker hijack service start-up |
-| **Hijackable `%PATH%`** | Machine `%PATH%` directories writable by the current user | Enables DLL/binary planting that privileged processes may load |
-| **Modifiable autoruns** | Entries under the `Run` / `RunOnce` (incl. Wow6432Node) keys | Writable autorun targets run at logon, potentially elevated |
-| **Modifiable service keys** | Service registry keys the current user can modify | Lets an attacker repoint a service binary and gain its privileges |
-| **AlwaysInstallElevated** | Whether the policy is set in **both** HKLM and HKCU | When both are `1`, any MSI runs as SYSTEM |
-| **Auto-logon** | Credentials stored in the Winlogon registry keys | Plaintext passwords / SIDs left in the registry |
-| **AV / EDR** | Security products registered with Windows Security Center | Helps understand what defenses are present |
-| **Microsoft Teams (classic)** | Whether classic Teams is installed and whether its `current` directory or DLLs/EXEs are writable by the current user | User-writable targets are concrete DLL side-loading candidates |
+| Category | Checks | Typical severity |
+|----------|--------|------------------|
+| **Missing updates** | Known privilege-escalation / RCE CVEs the current build appears unpatched against (2019 → 2025, incl. several CISA KEV) | High |
+| **Privilege escalation** | AlwaysInstallElevated (HKLM+HKCU), unquoted service paths, user-writable `%PATH%`, user-modifiable service registry keys, user-writable autorun targets | Medium–High |
+| **Credential protection** | WDigest cleartext caching, LSA protection (RunAsPPL), LAN Manager auth level, cached logon count | Low–High |
+| **Network protocols** | SMBv1, SMB signing, LLMNR, NBT-NS, legacy SSL/TLS (SChannel) | Medium–High |
+| **Remote access** | RDP enabled without Network Level Authentication | High |
+| **Accounts & policy** | Guest account state, anonymous / null-session access, UAC configuration | Medium–High |
+| **Defense & logging** | Windows Firewall per profile, Microsoft Defender state (best-effort), PowerShell script-block / module logging, AutoRun/AutoPlay, LAPS presence | Low–High |
+| **Endpoint defense** | Registered AV / EDR products | Info/Medium |
+| **Credential exposure** | Auto-logon credentials stored in the registry | Medium–High |
 
-### How the CVE check works
+Each run starts with a system-info header (OS, build, release, installed KB count).
 
-For each supported CVE, IronSharp knows, per Windows build, the KB update(s)
-that fix it. It reads the build number and the installed KB list, and reports a
-CVE as *potentially vulnerable* when the machine runs an affected build **and
-none** of the fixing KBs is installed.
+### Output model
 
-> **Note on accuracy.** This is a heuristic based on the *first* fixing update
-> for each build. Windows cumulative updates supersede one another, so a machine
-> that was patched by a **later** cumulative update not listed for a given CVE
-> may still be reported. Always confirm a finding against the current patch
-> level before acting on it. Results are also most complete when IronSharp is
-> run from an elevated prompt.
+Findings are grouped by category and printed with a severity tag:
+
+```
+==== Network protocols ====
+[HIGH] SMBv1 server enabled
+    Observed       : LanmanServer SMB1 = 1 - the legacy, wormable SMBv1 protocol is enabled.
+    Recommendation : Disable and uninstall the SMBv1 feature (Server and Client) on all supported systems.
+    Reference      : Microsoft - Stop using SMBv1 / CIS
+[OK] SMB signing
+    Observed       : Required on both client and server.
+```
+
+A final **Summary** lists the count of weaknesses by severity.
+
+### How the missing-update (CVE) check works
+
+For each supported CVE, IronSharp knows the per-build KB update(s) that fix it.
+It reads the build number and installed KBs and flags a CVE as *potentially
+vulnerable* when the machine runs an affected build **and none** of the fixing
+KBs is installed.
+
+> **Accuracy note.** This is a heuristic based on the *first* fixing update per
+> build. Windows cumulative updates supersede one another, so a machine patched
+> by a **later** cumulative update not listed for a given CVE may still be
+> reported. Confirm any finding against the current patch level. Coverage runs
+> from 2019 through 2025; newer CVEs can be added as verified KB data becomes
+> available.
 
 ---
 
 ## Requirements
 
-- Windows (the checks rely on Windows WMI and registry APIs)
+- Windows (checks rely on Windows WMI and registry APIs)
 - .NET Framework 4.8 — already present on current Windows 10/11 and Server builds
+
+Run from an **elevated** prompt for the most complete results; many machine-wide
+registry and ACL reads are restricted for standard users.
 
 ---
 
@@ -59,8 +77,7 @@ none** of the fixing KBs is installed.
 ### Download a build
 
 Every push and pull request is built by GitHub Actions (the **Build** workflow).
-Open the latest successful run and download the `IronSharp` artifact, which
-contains `IronSharp.exe`.
+Open the latest successful run and download the `IronSharp` artifact.
 
 ### Build from source
 
@@ -76,48 +93,50 @@ nuget restore IronSharp.sln
 msbuild IronSharp.sln /p:Configuration=Release
 ```
 
-The compiled binary is written to:
-
-```
-IronSharp\bin\Release\IronSharp.exe
-```
+The binary is written to `IronSharp\bin\Release\IronSharp.exe`.
 
 ---
 
 ## Usage
 
-Copy `IronSharp.exe` to the machine you are auditing and run it from a console:
+Run the executable on the machine you want to audit:
 
 ```bat
 IronSharp.exe
 ```
 
-It takes no arguments and writes its findings to standard output. Run it from an
-**elevated** prompt for the most complete results (some registry and ACL reads
-are restricted for standard users).
-
-### Reading the output
-
-- Lines prefixed with `[+]` are positive findings or facts worth attention
-  (e.g. a writable path, a stored credential, a potential CVE).
-- Lines prefixed with `[-]` mean the corresponding check found nothing notable.
-- A `Vulnerable for ...` line means the build looks unpatched against that CVE
-  (see the accuracy note above).
-
-Redirect to a file to keep a report:
+It takes no arguments and writes to standard output. Redirect to keep a report:
 
 ```bat
-IronSharp.exe > ironsharp-report.txt
+IronSharp.exe > hardening-report.txt
 ```
+
+Reading the output: `[HIGH]`/`[MEDIUM]`/`[LOW]` tags mark weaknesses with a
+recommendation; `[OK]` marks a control that is configured correctly or is
+informational.
+
+---
+
+## References
+
+Findings map to well-known hardening guidance. Use these as the authoritative
+source when remediating:
+
+- CIS Microsoft Windows Benchmarks — https://www.cisecurity.org/benchmark/microsoft_windows_desktop
+- Microsoft Security Baselines (Security Compliance Toolkit) — https://learn.microsoft.com/windows/security/operating-system-security/device-management/windows-security-configuration-framework/windows-security-baselines
+- Microsoft Security Update Guide (CVEs) — https://msrc.microsoft.com/update-guide
+
+IronSharp reports configuration; it does not certify compliance. Always validate
+against the official baseline for your environment.
 
 ---
 
 ## Legal / authorized use
 
-This tool is intended for security assessments, CTFs and research **on systems
-you own or are explicitly authorized to test**. You are responsible for
-complying with all applicable laws and for obtaining permission before running
-it against any system. The author assumes no liability for misuse.
+This tool is intended for security assessments, hardening reviews, CTFs and
+research **on systems you own or are explicitly authorized to test**. You are
+responsible for complying with all applicable laws and for obtaining permission
+before running it against any system. The author assumes no liability for misuse.
 
 ---
 
