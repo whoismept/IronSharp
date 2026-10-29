@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags: [ "v*" ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.3.0)"
+        required: true
+        default: "v1.3.0"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore packages
+        run: nuget restore IronSharp.sln
+
+      - name: Build (Release)
+        run: msbuild IronSharp.sln /p:Configuration=Release /p:Platform="Any CPU"
+
+      - name: Compute SHA256
+        shell: pwsh
+        run: |
+          $exe = "IronSharp/bin/Release/IronSharp.exe"
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  IronSharp.exe" | Out-File -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+
+      - name: Resolve tag
+        id: ver
+        shell: bash
+        run: echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: IronSharp ${{ steps.ver.outputs.tag }}
+          generate_release_notes: true
+          body: |
+            IronSharp — read-only Windows hardening advisor.
+
+            Audits the local Windows system for missing-update CVEs (data-driven,
+            offline dataset with an optional `--online` refresh) and for security
+            misconfigurations, then reports the recommended hardening with a
+            severity and a reference. It only reads and reports — nothing on the
+            system is changed.
+
+            ## Usage
+            ```
+            IronSharp.exe              # offline audit using the embedded CVE dataset
+            IronSharp.exe --online     # download the latest dataset first
+            IronSharp.exe --data FILE  # use a local dataset file
+            ```
+            Run from an elevated (Administrator) prompt for a complete audit.
+            Requires .NET Framework 4.8 (present on current Windows).
+
+            Verify the download against `SHA256SUMS.txt`.
+          files: |
+            IronSharp/bin/Release/IronSharp.exe
+            SHA256SUMS.txt
