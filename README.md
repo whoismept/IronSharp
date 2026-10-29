@@ -53,7 +53,9 @@ Findings are grouped by category and printed with a severity tag:
     Observed       : Required on both client and server.
 ```
 
-A final **Summary** lists the count of weaknesses by severity.
+Where a finding covers many items — affected CVEs, user-writable paths,
+modifiable service keys — each item is listed in full, one per line, so nothing
+is hidden. A final **Summary** lists the count of weaknesses by severity.
 
 ### How the missing-update (CVE) check works
 
@@ -74,8 +76,14 @@ The dataset is **kept current automatically**: a scheduled GitHub Action
 and their fixed build revisions from the official **MSRC CVRF API**, enriches them
 with the **CISA Known Exploited Vulnerabilities** catalog (an `actively exploited`
 flag), and commits an updated `cve-data.json`. The run fires on the Wednesday after
-Patch Tuesday. You can also run `IronSharp.exe --online` (or `--data`) to use a
-fresher dataset without rebuilding.
+Patch Tuesday.
+
+You can use a fresher dataset without rebuilding via `--online` or `--data`.
+Note that `--online` does **not** contact MSRC or CISA directly: it downloads the
+`cve-data.json` asset attached to the latest GitHub **Release** over HTTPS, keeping
+the CVRF/KEV parsing in one place. The scheduled updater refreshes that release
+asset after each Patch Tuesday, so `--online` stays current. `--data` loads an
+equivalent file you supply. Both fall back to the embedded dataset on any error.
 
 When a build is behind, the summary calls out how many of the missing fixes are
 **actively exploited** (CISA KEV) so those can be prioritised.
@@ -97,10 +105,22 @@ registry and ACL reads are restricted for standard users.
 
 ## Installation
 
-### Download a build
+### Download a release (recommended)
 
-Every push and pull request is built by GitHub Actions (the **Build** workflow).
-Open the latest successful run and download the `IronSharp` artifact.
+Download `IronSharp.exe` from the latest
+[Release](https://github.com/whoismept/IronSharp/releases/latest). Each release
+also ships a `SHA256SUMS.txt`; verify the download before running:
+
+```powershell
+(Get-FileHash .\IronSharp.exe -Algorithm SHA256).Hash.ToLower()
+# compare the printed hash against the value in SHA256SUMS.txt
+```
+
+### Download a CI build
+
+Every push and pull request is also built by GitHub Actions (the **Build**
+workflow). Open the latest successful run and download the `IronSharp` artifact.
+These artifacts are retained only for a while; releases are permanent.
 
 ### Build from source
 

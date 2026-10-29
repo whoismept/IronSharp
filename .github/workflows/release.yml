@@ -36,9 +36,11 @@ jobs:
       - name: Compute SHA256
         shell: pwsh
         run: |
-          $exe = "IronSharp/bin/Release/IronSharp.exe"
-          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  IronSharp.exe" | Out-File -Encoding ascii SHA256SUMS.txt
+          $exe  = "IronSharp/bin/Release/IronSharp.exe"
+          $data = "IronSharp/Data/cve-data.json"
+          $h1 = (Get-FileHash $exe  -Algorithm SHA256).Hash.ToLower()
+          $h2 = (Get-FileHash $data -Algorithm SHA256).Hash.ToLower()
+          "$h1  IronSharp.exe`n$h2  cve-data.json" | Out-File -Encoding ascii SHA256SUMS.txt
           Get-Content SHA256SUMS.txt
 
       - name: Resolve tag
@@ -73,4 +75,5 @@ jobs:
             Verify the download against `SHA256SUMS.txt`.
           files: |
             IronSharp/bin/Release/IronSharp.exe
+            IronSharp/Data/cve-data.json
             SHA256SUMS.txt
