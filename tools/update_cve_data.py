@@ -23,6 +23,7 @@ import sys
 import urllib.request
 
 API_BASE = "https://api.msrc.microsoft.com/cvrf/v3.0"
+KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 DEFAULT_OUT = os.path.join("IronSharp", "Data", "cve-data.json")
 IMPACTS = {"elevation of privilege", "remote code execution"}
 CVE_RE = re.compile(r"^CVE-\d{4}-\d+$")
@@ -88,6 +89,19 @@ def http_json(url):
     })
     with urllib.request.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read().decode("utf-8"))
+
+
+def fetch_kev():
+    """CVE ids in the CISA Known Exploited Vulnerabilities catalog. Enrichment
+    only - a fetch failure must not fail the run."""
+    try:
+        data = http_json(KEV_URL)
+        ids = {v.get("cveID") for v in data.get("vulnerabilities", []) if v.get("cveID")}
+        print("CISA KEV entries:", len(ids))
+        return ids
+    except Exception as e:
+        print("KEV fetch failed (continuing without it):", e, file=sys.stderr)
+        return set()
 
 
 def value(obj):
@@ -251,7 +265,10 @@ def to_document(merged):
             builds[str(b)] = entry
         if not builds:
             continue
-        cves.append({"id": cve, "title": rec["title"], "severity": rec["severity"], "builds": builds})
+        entry = {"id": cve, "title": rec["title"], "severity": rec["severity"], "builds": builds}
+        if rec.get("kev"):
+            entry["kev"] = True
+        cves.append(entry)
     return {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "MSRC CVRF v3.0 (api.msrc.microsoft.com); maintained by tools/update_cve_data.py",
@@ -287,6 +304,13 @@ def main():
         print("Processed", cid, "- cumulative CVEs:", len(merged))
 
     print("FixedBuild coverage: {with_fixedbuild} with revision, {without_fixedbuild} without".format(**stats))
+
+    # Enrich with CISA KEV (actively-exploited) flags.
+    kev = fetch_kev()
+    for cve in merged:
+        if cve in kev:
+            merged[cve]["kev"] = True
+    print("KEV-flagged CVEs in dataset:", sum(1 for c in merged.values() if c.get("kev")))
 
     document = to_document(merged)
     new_cves = json.dumps(document["cves"], sort_keys=True)

@@ -21,6 +21,7 @@ namespace IronSharp.Core
         public string Id;
         public string Title;
         public string Severity;
+        public bool Kev;   // listed in the CISA Known Exploited Vulnerabilities catalog
         public Dictionary<int, BuildFix> Builds = new Dictionary<int, BuildFix>();
     }
 
@@ -67,7 +68,8 @@ namespace IronSharp.Core
                     {
                         Id = AsString(c, "id"),
                         Title = AsString(c, "title"),
-                        Severity = AsString(c, "severity")
+                        Severity = AsString(c, "severity"),
+                        Kev = c.ContainsKey("kev") && c["kev"] is bool && (bool)c["kev"]
                     };
                     if (string.IsNullOrEmpty(rec.Id)) continue;
 

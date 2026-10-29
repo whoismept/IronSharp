@@ -71,9 +71,14 @@ cumulative update.
 
 The dataset is **kept current automatically**: a scheduled GitHub Action
 (`tools/update_cve_data.py` + `update-data.yml`) pulls recent Windows EoP/RCE CVEs
-and their fixed build revisions from the official **MSRC CVRF API** and commits an
-updated `cve-data.json`. You can also run `IronSharp.exe --online` (or `--data`) to
-use a fresher dataset without rebuilding.
+and their fixed build revisions from the official **MSRC CVRF API**, enriches them
+with the **CISA Known Exploited Vulnerabilities** catalog (an `actively exploited`
+flag), and commits an updated `cve-data.json`. The run fires on the Wednesday after
+Patch Tuesday. You can also run `IronSharp.exe --online` (or `--data`) to use a
+fresher dataset without rebuilding.
+
+When a build is behind, the summary calls out how many of the missing fixes are
+**actively exploited** (CISA KEV) so those can be prioritised.
 
 > **Note.** Assessment needs the build revision (UBR), which reads best from an
 > elevated prompt. Always confirm against Windows Update before acting.
