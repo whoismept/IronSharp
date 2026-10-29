@@ -27,6 +27,26 @@ DEFAULT_OUT = os.path.join("IronSharp", "Data", "cve-data.json")
 IMPACTS = {"elevation of privilege", "remote code execution"}
 CVE_RE = re.compile(r"^CVE-\d{4}-\d+$")
 FIXEDBUILD_RE = re.compile(r"^\d+\.\d+\.(\d+)\.(\d+)$")  # X.Y.BUILD.REV
+MONTHS = {m: i for i, m in enumerate(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], 1)}
+
+# Only record fixes for Windows client/server base builds the tool can match
+# against a live machine; this drops non-OS products (Office, .NET, etc.).
+WINDOWS_BUILDS = {
+    7600, 7601, 9200, 9600,              # Win7/2008R2, 2012, 2012R2
+    10240, 10586, 14393, 15063, 16299,   # Win10 1507-1709 / Server 2016
+    17134, 17763, 18362, 18363,          # Win10 1803-1909 / Server 2019
+    19041, 19042, 19043, 19044, 19045,   # Win10 2004-22H2
+    20348, 25398,                        # Server 2022 / Server 23H2
+    22000, 22621, 22631, 26100,          # Win11 21H2-24H2 / Server 2025
+}
+
+
+def id_sort_key(cid):
+    m = re.match(r"(\d{4})-([A-Za-z]{3})", cid or "")
+    if not m:
+        return (0, 0)
+    return (int(m.group(1)), MONTHS.get(m.group(2), 0))
 
 
 # Fallback product-name -> base build (only used when FixedBuild is absent).
@@ -91,14 +111,15 @@ def severity_from_cvss(score):
 def recent_update_ids(months):
     data = http_json(API_BASE + "/updates")
     rows = data.get("value", data if isinstance(data, list) else [])
-    ids = []
-    for entry in rows:
-        cid = entry.get("ID") or entry.get("id")
-        rel = entry.get("CurrentReleaseDate") or entry.get("InitialReleaseDate") or ""
-        if cid:
-            ids.append((rel, cid))
-    ids.sort()
-    return [cid for _, cid in ids[-months:]]
+    ids = [entry.get("ID") or entry.get("id") for entry in rows]
+    ids = [c for c in ids if c and id_sort_key(c) != (0, 0)]
+    # Pick the most recent `months` distinct year-months chronologically, then
+    # keep every document in those months (covers out-of-band releases too).
+    keys = sorted({id_sort_key(c) for c in ids})
+    keep = set(keys[-months:])
+    chosen = [c for c in ids if id_sort_key(c) in keep]
+    chosen.sort(key=id_sort_key)
+    return chosen
 
 
 def parse_document(doc, stats):
@@ -142,15 +163,16 @@ def parse_document(doc, stats):
             fixed = (rem.get("FixedBuild") or "").strip()
             m = FIXEDBUILD_RE.match(fixed)
             if m:
-                stats["with_fixedbuild"] += 1
                 base, ubr = int(m.group(1)), int(m.group(2))
-                _add(builds, base, ubr, kb)
+                if base in WINDOWS_BUILDS:
+                    stats["with_fixedbuild"] += 1
+                    _add(builds, base, ubr, kb)
             else:
-                stats["without_fixedbuild"] += 1
                 # No revision available: map by product name, ubr unknown (0).
                 for pid in rem.get("ProductID", []):
                     base = product_to_build(products.get(pid, ""))
-                    if base is not None:
+                    if base in WINDOWS_BUILDS:
+                        stats["without_fixedbuild"] += 1
                         _add(builds, base, 0, kb)
 
         if not builds:
@@ -231,7 +253,7 @@ def to_document(merged):
             continue
         cves.append({"id": cve, "title": rec["title"], "severity": rec["severity"], "builds": builds})
     return {
-        "generated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "MSRC CVRF v3.0 (api.msrc.microsoft.com); maintained by tools/update_cve_data.py",
         "schema": "build -> {ubr: fixed revision, kb: article}",
         "cves": cves,
@@ -244,8 +266,6 @@ def main():
     ap.add_argument("--out", default=DEFAULT_OUT)
     args = ap.parse_args()
 
-    merged = load_existing(args.out)
-    before = json.dumps(to_document(merged), sort_keys=True)
     stats = {"with_fixedbuild": 0, "without_fixedbuild": 0}
 
     try:
@@ -254,6 +274,9 @@ def main():
         print("Failed to list MSRC updates:", e, file=sys.stderr)
         return 1
 
+    # Regenerate the dataset fresh from the selected window each run, so stale or
+    # mis-selected entries never linger.
+    merged = {}
     for cid in ids:
         try:
             doc = http_json(API_BASE + "/cvrf/" + cid)
@@ -266,7 +289,14 @@ def main():
     print("FixedBuild coverage: {with_fixedbuild} with revision, {without_fixedbuild} without".format(**stats))
 
     document = to_document(merged)
-    if json.dumps(document, sort_keys=True) == before:
+    new_cves = json.dumps(document["cves"], sort_keys=True)
+    old_cves = None
+    if os.path.exists(args.out):
+        try:
+            old_cves = json.dumps(json.load(open(args.out, encoding="utf-8")).get("cves", []), sort_keys=True)
+        except Exception:
+            old_cves = None
+    if new_cves == old_cves:
         print("No dataset changes.")
         return 0
 
