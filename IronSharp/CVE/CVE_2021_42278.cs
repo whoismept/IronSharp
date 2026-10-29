@@ -45,7 +45,7 @@ namespace IronSharp.CVE
                 default:
                     break;
             }
-            if (vulnkblist.Intersect(installedkblist).Any())
+            if (vulnkblist.Any() && !vulnkblist.Intersect(installedkblist).Any())
             {
                 Console.WriteLine("Vulnerable for sAMAccountName spoofing (CVE-2021-42278)");
             }

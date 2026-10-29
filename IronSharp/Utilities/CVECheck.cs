@@ -26,8 +26,13 @@ namespace IronSharp.Utilities
             //Windows 10, Version 20H2                  19042
             //Windows Server, Version 20H2              19042
             //Windows 10, Version 21H1                  19043
+            //Windows 10, Version 21H2                  19044
+            //Windows 10, Version 22H2                  19045
             //Windows Server 2022                       20348
             //Windows 11, Version 21H2                  22000
+            //Windows 11, Version 22H2                  22621
+            //Windows 11, Version 23H2                  22631
+            //Windows 11, Version 24H2                  26100
 
             var kblist = Utilities.GetWMIQuery.GetInstalledKBs();
             var buildnumber = Utilities.GetWMIQuery.GetBuildNumber();
@@ -50,6 +55,8 @@ namespace IronSharp.Utilities
             CVE.CVE_2021_40449.Check(buildnumber, kblist);
             CVE.CVE_2022_21882.Check(buildnumber, kblist);
             CVE.CVE_2021_42278.Check(buildnumber, kblist);
+            CVE.CVE_2023_28252.Check(buildnumber, kblist);
+            CVE.CVE_2024_30088.Check(buildnumber, kblist);
         }
     }
 }

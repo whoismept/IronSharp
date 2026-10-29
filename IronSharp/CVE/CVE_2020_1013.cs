@@ -54,7 +54,7 @@ namespace IronSharp.CVE
                 default:
                     break;
             }
-            if (vulnkblist.Intersect(installedkblist).Any())
+            if (vulnkblist.Any() && !vulnkblist.Intersect(installedkblist).Any())
             {
                 Console.WriteLine("Vulnerable for CVE-2020-1013");
             }
