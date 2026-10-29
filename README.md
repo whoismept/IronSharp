@@ -28,6 +28,7 @@ sharper, harder, and ready.
 | Category | Checks | Typical severity |
 |----------|--------|------------------|
 | **Missing updates** | Windows EoP / RCE CVEs the current build appears unpatched against, from a dataset auto-refreshed from MSRC (incl. several CISA KEV) | High |
+| **Third-party software** | Installed third-party applications (registry inventory) checked against a curated, NVD-sourced vulnerability dataset; only curated products are assessed | Low–High |
 | **Privilege escalation** | AlwaysInstallElevated (HKLM+HKCU), unquoted service paths, user-writable `%PATH%`, user-modifiable service registry keys, user-writable autorun targets | Medium–High |
 | **Credential protection** | WDigest cleartext caching, LSA protection (RunAsPPL), LAN Manager auth level, outgoing NTLM restriction, cached logon count | Low–High |
 | **Network protocols** | SMBv1, SMB signing, SMB encryption, LLMNR, NBT-NS, legacy SSL/TLS (SChannel) | Low–High |
@@ -91,6 +92,35 @@ When a build is behind, the summary calls out how many of the missing fixes are
 > **Note.** Assessment needs the build revision (UBR), which reads best from an
 > elevated prompt. Always confirm against Windows Update before acting.
 
+### Third-party application CVEs
+
+Beyond Windows itself, IronSharp inventories installed third-party applications
+from the registry Uninstall keys (`HKLM`, `HKLM\WOW6432Node`, `HKCU` — read-only;
+it does **not** use the slow, side-effecting `Win32_Product` WMI class) and checks
+each against a **curated** vulnerability dataset
+(`IronSharp/Data/thirdparty-cve-data.json`).
+
+To stay true to IronSharp's low-noise goal, matching is deliberately conservative:
+
+- Only products on the **curated allowlist** (common high-value apps — browsers,
+  7-Zip, WinRAR, PuTTY, Java, Acrobat Reader, …) are assessed. Everything else is
+  reported, in full, under a single **"not assessed"** coverage line so you can
+  see exactly what was and wasn't covered.
+- A product is flagged only when its installed version falls inside a CVE's
+  affected range **with a known fixed version**. If the version can't be parsed,
+  the item is left unassessed rather than guessed.
+
+The dataset is produced by `tools/update_thirdparty_cve_data.py` +
+`update-thirdparty-data.yml`, which query the **NVD 2.0 API** per curated product
+(CPE vendor/product), keep only ranges with an actionable fixed upper bound, map
+CVSS to a severity, and flag **CISA KEV** entries. Set an `NVD_API_KEY` repository
+secret for a higher NVD rate limit (optional). Like the Windows dataset, it ships
+embedded and is also attached to each release, so `--online` refreshes it too.
+
+> This is a focused, curated check — not a full software-composition scanner. It
+> trades breadth for a very low false-positive rate. Validate against the vendor's
+> advisory before acting.
+
 ---
 
 ## Requirements
@@ -145,15 +175,18 @@ The binary is written to `IronSharp\bin\Release\IronSharp.exe`.
 Run the executable on the machine you want to audit:
 
 ```bat
-IronSharp.exe                      :: audit using the embedded dataset (offline)
-IronSharp.exe --online             :: fetch the latest CVE dataset first (needs internet)
-IronSharp.exe --data cve-data.json :: load the dataset from a local file (offline refresh)
+IronSharp.exe                      :: audit using the embedded datasets (offline)
+IronSharp.exe --online             :: fetch the latest datasets first (needs internet)
+IronSharp.exe --data cve-data.json :: load the Windows dataset from a local file
+IronSharp.exe --thirdparty-data thirdparty-cve-data.json :: local third-party dataset
 IronSharp.exe --help               :: show usage
 ```
 
-Dataset precedence is `--data` > `--online` > embedded. `--data` lets an
-air-gapped operator refresh coverage by copying in a newer `cve-data.json`
-(e.g. via USB) without rebuilding the binary or any internet access.
+Dataset precedence is `--data` / `--thirdparty-data` > `--online` > embedded.
+`--online` refreshes **both** datasets (Windows and third-party) from the latest
+release's assets. The `--data` / `--thirdparty-data` flags let an air-gapped
+operator refresh coverage by copying in a newer JSON (e.g. via USB) without
+rebuilding the binary or any internet access.
 
 It writes to standard output. Redirect to keep a report:
 
@@ -175,6 +208,8 @@ source when remediating:
 - CIS Microsoft Windows Benchmarks — https://www.cisecurity.org/benchmark/microsoft_windows_desktop
 - Microsoft Security Baselines (Security Compliance Toolkit) — https://learn.microsoft.com/windows/security/operating-system-security/device-management/windows-security-configuration-framework/windows-security-baselines
 - Microsoft Security Update Guide (CVEs) — https://msrc.microsoft.com/update-guide
+- NVD — National Vulnerability Database (third-party application CVEs) — https://nvd.nist.gov
+- CISA Known Exploited Vulnerabilities catalog — https://www.cisa.gov/known-exploited-vulnerabilities-catalog
 
 IronSharp reports configuration; it does not certify compliance. Always validate
 against the official baseline for your environment.

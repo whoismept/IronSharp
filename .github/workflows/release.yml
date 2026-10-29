@@ -38,9 +38,11 @@ jobs:
         run: |
           $exe  = "IronSharp/bin/Release/IronSharp.exe"
           $data = "IronSharp/Data/cve-data.json"
+          $tp   = "IronSharp/Data/thirdparty-cve-data.json"
           $h1 = (Get-FileHash $exe  -Algorithm SHA256).Hash.ToLower()
           $h2 = (Get-FileHash $data -Algorithm SHA256).Hash.ToLower()
-          "$h1  IronSharp.exe`n$h2  cve-data.json" | Out-File -Encoding ascii SHA256SUMS.txt
+          $h3 = (Get-FileHash $tp   -Algorithm SHA256).Hash.ToLower()
+          "$h1  IronSharp.exe`n$h2  cve-data.json`n$h3  thirdparty-cve-data.json" | Out-File -Encoding ascii SHA256SUMS.txt
           Get-Content SHA256SUMS.txt
 
       - name: Resolve tag
@@ -76,4 +78,5 @@ jobs:
           files: |
             IronSharp/bin/Release/IronSharp.exe
             IronSharp/Data/cve-data.json
+            IronSharp/Data/thirdparty-cve-data.json
             SHA256SUMS.txt

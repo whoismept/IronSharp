@@ -54,6 +54,20 @@ namespace IronSharp.Core
             Add(category, title, Severity.Info, false, observed, null, null);
         }
 
+        // Informational finding that also carries a full detail list.
+        public static void Ok(string category, string title, string observed, IEnumerable<string> items)
+        {
+            Findings.Add(new Finding
+            {
+                Category = category,
+                Title = title,
+                Severity = Severity.Info,
+                IsWeak = false,
+                Observed = observed,
+                Items = items == null ? null : items.ToList()
+            });
+        }
+
         public static void PrintAll()
         {
             foreach (var group in Findings.GroupBy(f => f.Category))

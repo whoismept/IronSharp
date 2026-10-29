@@ -1,0 +1,52 @@
+name: Update third-party CVE dataset
+
+on:
+  schedule:
+    # Weekly, Thursday 05:17 UTC. NVD updates continuously; weekly is enough.
+    - cron: "17 5 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh third-party dataset from NVD
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: python tools/update_thirdparty_cve_data.py
+
+      - name: Commit changes if any
+        run: |
+          if [ -n "$(git status --porcelain IronSharp/Data/thirdparty-cve-data.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add IronSharp/Data/thirdparty-cve-data.json
+            git commit -m "data: refresh thirdparty-cve-data.json from NVD"
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
+      - name: Refresh dataset asset on the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Keep --online (which reads the latest release's asset) current.
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
+          if [ -n "$tag" ]; then
+            gh release upload "$tag" IronSharp/Data/thirdparty-cve-data.json --repo "$GITHUB_REPOSITORY" --clobber
+            echo "Updated thirdparty-cve-data.json asset on release $tag."
+          else
+            echo "No release found; skipping asset refresh."
+          fi

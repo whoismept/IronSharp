@@ -73,11 +73,13 @@
     <Compile Include="Core\Finding.cs" />
     <Compile Include="Core\Report.cs" />
     <Compile Include="Core\CveData.cs" />
+    <Compile Include="Core\ThirdPartyData.cs" />
     <Compile Include="Checks\CredentialProtection.cs" />
     <Compile Include="Checks\NetworkProtocols.cs" />
     <Compile Include="Checks\RemoteAccess.cs" />
     <Compile Include="Checks\AccountPolicy.cs" />
     <Compile Include="Checks\DefenseAndLogging.cs" />
+    <Compile Include="Checks\ThirdPartySoftware.cs" />
     <Compile Include="Utilities\AlwaysInstallElevated.cs" />
     <Compile Include="Utilities\AutoLogon.cs" />
     <Compile Include="Utilities\GetAv.cs" />
@@ -94,6 +96,7 @@
     <Compile Include="Utilities\UnquotedPathCheck.cs" />
     <Compile Include="Utilities\GetWMIQuery.cs" />
     <Compile Include="Utilities\AccessControl.cs" />
+    <Compile Include="Utilities\VersionCompare.cs" />
     <Compile Include="Utilities\ModifiableAutorun.cs" />
     <Compile Include="Utilities\ModifiableKeys.cs" />
     <Compile Include="Utilities\RegistryUtilities.cs" />
@@ -115,6 +118,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Data\cve-data.json" />
+    <EmbeddedResource Include="Data\thirdparty-cve-data.json" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>

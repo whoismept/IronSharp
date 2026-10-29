@@ -11,6 +11,8 @@ namespace IronSharp
     {
         private const string OnlineDataUrl =
             "https://github.com/whoismept/IronSharp/releases/latest/download/cve-data.json";
+        private const string OnlineThirdPartyDataUrl =
+            "https://github.com/whoismept/IronSharp/releases/latest/download/thirdparty-cve-data.json";
 
         static void Main(string[] args)
         {
@@ -25,10 +27,12 @@ namespace IronSharp
 
             // Dataset precedence: --data <file>  >  --online  >  embedded.
             string datasetJson = ResolveDataset(args);
+            string thirdPartyJson = ResolveThirdPartyDataset(args);
 
             // All checks are read-only: they inspect WMI, the registry and file
             // ACLs and record findings. Nothing on the system is modified.
             Utilities.CVECheck.CheckAll(datasetJson);
+            Checks.ThirdPartySoftware.Run(thirdPartyJson);
             Utilities.UnquotedPathCheck.CheckUnquotedPath();
             Utilities.HijackablePaths.HighjackablePaths();
             Utilities.ModifiableAutorun.CheckAutoRun();
@@ -52,13 +56,15 @@ namespace IronSharp
         {
             Console.WriteLine("IronSharp - read-only Windows hardening advisor");
             Console.WriteLine();
-            Console.WriteLine("Usage: IronSharp.exe [--online | --data <file>]");
-            Console.WriteLine("  (no option)    Audit using the CVE dataset embedded in the binary (offline).");
-            Console.WriteLine("  --online       Download the latest CVE dataset over HTTPS first");
-            Console.WriteLine("                 (requires internet on this host; falls back to embedded).");
-            Console.WriteLine("  --data <file>  Load the CVE dataset from a local JSON file (offline refresh");
-            Console.WriteLine("                 without rebuilding; e.g. a cve-data.json copied in by hand).");
-            Console.WriteLine("  -h, --help     Show this help.");
+            Console.WriteLine("Usage: IronSharp.exe [--online | --data <file>] [--thirdparty-data <file>]");
+            Console.WriteLine("  (no option)         Audit using the datasets embedded in the binary (offline).");
+            Console.WriteLine("  --online            Download the latest Windows and third-party CVE datasets");
+            Console.WriteLine("                      over HTTPS first (needs internet; falls back to embedded).");
+            Console.WriteLine("  --data <file>       Load the Windows CVE dataset from a local JSON file");
+            Console.WriteLine("                      (offline refresh without rebuilding).");
+            Console.WriteLine("  --thirdparty-data <file>  Load the third-party application CVE dataset from");
+            Console.WriteLine("                      a local JSON file.");
+            Console.WriteLine("  -h, --help          Show this help.");
             Console.WriteLine();
             Console.WriteLine("The tool only reads and reports; it never changes the system.");
         }
@@ -73,7 +79,22 @@ namespace IronSharp
             }
             if (args.Any(a => a.Equals("--online", StringComparison.OrdinalIgnoreCase)))
             {
-                return FetchOnlineDataset();
+                return FetchOnline(OnlineDataUrl, "Windows CVE dataset");
+            }
+            return null;
+        }
+
+        // Same precedence for the third-party application dataset.
+        private static string ResolveThirdPartyDataset(string[] args)
+        {
+            string dataPath = GetOption(args, "--thirdparty-data");
+            if (dataPath != null)
+            {
+                return LoadLocalDataset(dataPath);
+            }
+            if (args.Any(a => a.Equals("--online", StringComparison.OrdinalIgnoreCase)))
+            {
+                return FetchOnline(OnlineThirdPartyDataUrl, "third-party CVE dataset");
             }
             return null;
         }
@@ -112,7 +133,7 @@ namespace IronSharp
             }
         }
 
-        private static string FetchOnlineDataset()
+        private static string FetchOnline(string url, string label)
         {
             try
             {
@@ -120,15 +141,15 @@ namespace IronSharp
                 using (var wc = new WebClient())
                 {
                     wc.Headers.Add("User-Agent", "IronSharp");
-                    string json = wc.DownloadString(OnlineDataUrl);
-                    Console.WriteLine("[*] Online mode: fetched the latest CVE dataset.");
+                    string json = wc.DownloadString(url);
+                    Console.WriteLine("[*] Online mode: fetched the latest {0}.", label);
                     Console.WriteLine("------------------------");
                     return json;
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("[!] Online fetch failed ({0}); falling back to the embedded dataset.", e.Message);
+                Console.WriteLine("[!] Online fetch of the {0} failed ({1}); using the embedded copy.", label, e.Message);
                 Console.WriteLine("------------------------");
                 return null;
             }
