@@ -1,0 +1,35 @@
+name: Maintenance purge
+
+# One-shot maintenance: remove stale releases, tags and branches that still
+# reference pre-cleanup history. Manual dispatch only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Delete stale releases (and their tags)
+        run: |
+          for t in latest v1.3.0; do
+            if gh release delete "$t" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null; then
+              echo "deleted release+tag: $t"
+            else
+              echo "no release: $t"
+            fi
+          done
+
+      - name: Delete stale refs
+        run: |
+          for ref in heads/update-v1.1 heads/_probe tags/old-release tags/latest tags/v1.3.0; do
+            if gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/$ref" >/dev/null 2>&1; then
+              echo "deleted ref: $ref"
+            else
+              echo "skip (absent): $ref"
+            fi
+          done
