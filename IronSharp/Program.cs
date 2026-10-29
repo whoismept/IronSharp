@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Security.Principal;
 using IronSharp.Core;
 
 namespace IronSharp
@@ -147,7 +148,30 @@ namespace IronSharp
             Console.WriteLine("[*] Build Number       : " + build + (ubr.HasValue ? "." + ubr.Value : ""));
             Console.WriteLine("[*] Release ID         : " + Utilities.RegistryUtilities.GetReleaseIdFromRegistiry());
             Console.WriteLine("[*] Installed KB count : " + Utilities.GetWMIQuery.GetInstalledKBs().Count);
+            bool admin = IsElevated();
+            Console.WriteLine("[*] Privilege          : " + (admin ? "Administrator (elevated)" : "Standard user"));
             Console.WriteLine("------------------------");
+            if (!admin)
+            {
+                Console.WriteLine("[!] Not elevated: some registry / service / ACL reads are restricted, so results may be incomplete.");
+                Console.WriteLine("    Run IronSharp from an elevated (Administrator) prompt for a complete audit.");
+                Console.WriteLine("------------------------");
+            }
+        }
+
+        private static bool IsElevated()
+        {
+            try
+            {
+                using (var id = WindowsIdentity.GetCurrent())
+                {
+                    return new WindowsPrincipal(id).IsInRole(WindowsBuiltInRole.Administrator);
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

@@ -141,41 +141,59 @@ namespace IronSharp.Utilities
                 return "";
             }
         }
-        public static bool IsModifiable(RegistryKey key)
+        private const RegistryRights RegWriteMask = RegistryRights.SetValue
+            | RegistryRights.CreateSubKey
+            | RegistryRights.Delete
+            | RegistryRights.WriteKey
+            | RegistryRights.ChangePermissions
+            | RegistryRights.TakeOwnership
+            | RegistryRights.FullControl;
+
+        private static readonly SecurityIdentifier[] NonPrivileged = BuildNonPrivileged();
+
+        private static SecurityIdentifier[] BuildNonPrivileged()
         {
-            if (key == null)
+            var types = new[]
             {
-                return false;
-            }
-            RegistryRights[] ModifyRights =
-            {
-                RegistryRights.ChangePermissions,
-                RegistryRights.FullControl,
-                RegistryRights.TakeOwnership,
-                RegistryRights.SetValue,
-                RegistryRights.WriteKey
+                WellKnownSidType.WorldSid,              // Everyone
+                WellKnownSidType.AuthenticatedUserSid,  // Authenticated Users
+                WellKnownSidType.BuiltinUsersSid,       // BUILTIN\Users
+                WellKnownSidType.InteractiveSid,        // INTERACTIVE
             };
-            WindowsIdentity identity = WindowsIdentity.GetCurrent();
-
-            AuthorizationRuleCollection rules = key.GetAccessControl().GetAccessRules(true, true, typeof(SecurityIdentifier));
-
-            foreach (RegistryAccessRule rule in rules)
+            var list = new System.Collections.Generic.List<SecurityIdentifier>();
+            foreach (var t in types)
             {
-                if (identity.Groups.Contains(rule.IdentityReference) || rule.IdentityReference == identity.User)
-                {
-                    foreach (RegistryRights AccessRight in ModifyRights)
-                    {
-                        if ((AccessRight & rule.RegistryRights) == AccessRight)
-                        {
-                            if (rule.AccessControlType == AccessControlType.Allow)
-                            {
-                                return true;
-                            }
+                try { list.Add(new SecurityIdentifier(t, null)); }
+                catch { }
+            }
+            return list.ToArray();
+        }
 
-                        }
+        // True if a non-privileged principal (Users / Authenticated Users /
+        // Everyone / INTERACTIVE) can write to the key with no overriding Deny.
+        // Administrators / SYSTEM are excluded on purpose: their write access is
+        // by design, not a weakness - so this stays meaningful even when
+        // IronSharp runs elevated.
+        public static bool IsModifiableByNonPrivileged(RegistryKey key)
+        {
+            if (key == null) return false;
+            try
+            {
+                var rules = key.GetAccessControl().GetAccessRules(true, true, typeof(SecurityIdentifier));
+                foreach (var sid in NonPrivileged)
+                {
+                    bool allow = false, deny = false;
+                    foreach (RegistryAccessRule rule in rules)
+                    {
+                        if (!rule.IdentityReference.Equals(sid)) continue;
+                        if ((rule.RegistryRights & RegWriteMask) == 0) continue;
+                        if (rule.AccessControlType == AccessControlType.Deny) deny = true;
+                        else if (rule.AccessControlType == AccessControlType.Allow) allow = true;
                     }
+                    if (allow && !deny) return true;
                 }
             }
+            catch { }
             return false;
         }
     }

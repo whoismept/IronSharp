@@ -37,7 +37,7 @@ namespace IronSharp.Utilities
                     {
                         string command = System.Convert.ToString(regkey.GetValue(name));
                         string exe = ExtractExePath(command);
-                        if (!string.IsNullOrEmpty(exe) && AccessControl.IsWritable(exe))
+                        if (!string.IsNullOrEmpty(exe) && AccessControl.IsWritableByNonPrivileged(exe))
                         {
                             writableTargets.Add(name + " -> " + exe);
                         }
@@ -48,12 +48,12 @@ namespace IronSharp.Utilities
 
             if (writableTargets.Count == 0)
             {
-                Report.Ok(Category, "Machine autorun targets", "No HKLM Run/RunOnce target is user-writable.");
+                Report.Ok(Category, "Machine autorun targets", "No HKLM Run/RunOnce target is writable by non-privileged users.");
             }
             else
             {
-                Report.Weak(Category, "User-writable autorun targets", Severity.Medium,
-                    "The current user can overwrite the binary launched by autorun entr(ies): " + string.Join("; ", writableTargets),
+                Report.Weak(Category, "Non-privileged-writable autorun targets", Severity.Medium,
+                    writableTargets.Count + " autorun target(s) writable by non-privileged users: " + Fmt.List(writableTargets),
                     "Restrict write access on these executables to administrators; a writable autorun target runs at logon and can be hijacked.",
                     "CIS - startup program / file permission hardening");
             }

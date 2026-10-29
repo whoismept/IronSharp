@@ -25,14 +25,12 @@ namespace IronSharp.Core
             });
         }
 
-        // A weakness that should be hardened.
         public static void Weak(string category, string title, Severity severity,
                                 string observed, string recommendation, string reference)
         {
             Add(category, title, severity, true, observed, recommendation, reference);
         }
 
-        // A control that is configured correctly, or purely informational context.
         public static void Ok(string category, string title, string observed)
         {
             Add(category, title, Severity.Info, false, observed, null, null);
@@ -43,11 +41,12 @@ namespace IronSharp.Core
             foreach (var group in Findings.GroupBy(f => f.Category))
             {
                 Console.WriteLine();
-                Console.WriteLine("==== " + group.Key + " ====");
+                WriteLine(ConsoleColor.Cyan, "==== " + group.Key + " ====");
                 foreach (var f in group.OrderByDescending(x => x.IsWeak).ThenByDescending(x => x.Severity))
                 {
                     string tag = f.IsWeak ? "[" + f.Severity.ToString().ToUpperInvariant() + "]" : "[OK]";
-                    Console.WriteLine("{0} {1}", tag, f.Title);
+                    Write(ColorFor(f.IsWeak, f.Severity), tag);
+                    Console.WriteLine(" " + f.Title);
                     if (!string.IsNullOrEmpty(f.Observed))
                     {
                         Console.WriteLine("    Observed       : " + f.Observed);
@@ -67,17 +66,46 @@ namespace IronSharp.Core
         public static void PrintSummary()
         {
             Console.WriteLine();
-            Console.WriteLine("==== Summary ====");
-            foreach (Severity sev in new[] { Severity.High, Severity.Medium, Severity.Low })
-            {
-                int n = Findings.Count(f => f.IsWeak && f.Severity == sev);
-                Console.WriteLine("  {0,-6} : {1}", sev, n);
-            }
-            int total = Findings.Count(f => f.IsWeak);
-            Console.WriteLine("  Total weaknesses : " + total);
+            WriteLine(ConsoleColor.Cyan, "==== Summary ====");
+            WriteLine(ColorFor(true, Severity.High), "  High   : " + Count(Severity.High));
+            WriteLine(ColorFor(true, Severity.Medium), "  Medium : " + Count(Severity.Medium));
+            WriteLine(ColorFor(true, Severity.Low), "  Low    : " + Count(Severity.Low));
+            Console.WriteLine("  Total weaknesses : " + Findings.Count(f => f.IsWeak));
             Console.WriteLine();
             Console.WriteLine("IronSharp only reports configuration; nothing on this system was changed.");
             Console.WriteLine("Review each item and apply changes via Group Policy / secpol / your baseline.");
+        }
+
+        private static int Count(Severity sev)
+        {
+            return Findings.Count(f => f.IsWeak && f.Severity == sev);
+        }
+
+        private static ConsoleColor ColorFor(bool isWeak, Severity sev)
+        {
+            if (!isWeak) return ConsoleColor.Green;
+            switch (sev)
+            {
+                case Severity.High: return ConsoleColor.Red;
+                case Severity.Medium: return ConsoleColor.Yellow;
+                case Severity.Low: return ConsoleColor.DarkYellow;
+                default: return ConsoleColor.Gray;
+            }
+        }
+
+        // Colored writes degrade cleanly: when output is redirected to a file the
+        // color calls are no-ops, so the file stays plain text.
+        private static void Write(ConsoleColor color, string text)
+        {
+            try { Console.ForegroundColor = color; } catch { }
+            Console.Write(text);
+            try { Console.ResetColor(); } catch { }
+        }
+
+        private static void WriteLine(ConsoleColor color, string text)
+        {
+            Write(color, text);
+            Console.WriteLine();
         }
     }
 }

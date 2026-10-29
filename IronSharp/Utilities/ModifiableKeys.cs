@@ -28,7 +28,7 @@ namespace IronSharp.Utilities
                 {
                     string subKey = "SYSTEM\\CurrentControlSet\\Services\\" + sc.ServiceName;
                     RegistryKey key = Registry.LocalMachine.OpenSubKey(subKey);
-                    if (RegistryUtilities.IsModifiable(key))
+                    if (RegistryUtilities.IsModifiableByNonPrivileged(key))
                     {
                         modifiable.Add(sc.ServiceName);
                     }
@@ -38,12 +38,12 @@ namespace IronSharp.Utilities
 
             if (modifiable.Count == 0)
             {
-                Report.Ok(Category, "Modifiable service registry keys", "None writable by the current user.");
+                Report.Ok(Category, "Modifiable service registry keys", "None writable by non-privileged users.");
             }
             else
             {
-                Report.Weak(Category, "User-modifiable service registry keys", Severity.High,
-                    "The current user can modify the registry key of service(s): " + string.Join(", ", modifiable),
+                Report.Weak(Category, "Service registry keys writable by non-privileged users", Severity.High,
+                    modifiable.Count + " service key(s) writable by non-privileged users: " + Fmt.List(modifiable),
                     "Restrict write access on these HKLM\\SYSTEM\\CurrentControlSet\\Services keys to administrators; a user who can repoint ImagePath gains the service's privileges.",
                     "CIS - registry permissions");
             }
