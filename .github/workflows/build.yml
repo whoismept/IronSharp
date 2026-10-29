@@ -1,0 +1,35 @@
+name: Build
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore packages
+        run: nuget restore IronSharp.sln
+
+      - name: Build (Release)
+        run: msbuild IronSharp.sln /p:Configuration=Release /p:Platform="Any CPU"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IronSharp
+          path: IronSharp/bin/Release/IronSharp.exe
+          if-no-files-found: error

@@ -11,68 +11,142 @@ namespace IronSharp.Utilities
         public static string GetRegistryValue(string hive, string path, string value)
         {
             string registryKeyValue = null;
+            RegistryKey regKey;
             if (hive == "HKCU")
             {
-                var regKey = Registry.CurrentUser.OpenSubKey(path);
-                if (regKey != null)
-                {
-                    registryKeyValue = regKey.GetValue(value).ToString();
-                }
-                return registryKeyValue;
+                regKey = Registry.CurrentUser.OpenSubKey(path);
             }
             else if (hive == "HKU")
             {
-                var regKey = Registry.Users.OpenSubKey(path);
-                if (regKey != null)
-                {
-                    registryKeyValue = regKey.GetValue(value).ToString();
-                }
-                return registryKeyValue;
+                regKey = Registry.Users.OpenSubKey(path);
             }
             else
             {
-                var regKey = Registry.LocalMachine.OpenSubKey(path);
-                if (regKey != null)
+                regKey = Registry.LocalMachine.OpenSubKey(path);
+            }
+
+            if (regKey != null)
+            {
+                var raw = regKey.GetValue(value);
+                if (raw != null)
                 {
-                    registryKeyValue = regKey.GetValue(value).ToString();
+                    registryKeyValue = raw.ToString();
                 }
-                return registryKeyValue;
+            }
+            return registryKeyValue;
+        }
+
+        // Reads a DWORD from HKLM using the 64-bit view (avoids WOW6432 redirection,
+        // which matters for most security-relevant keys). Returns null if the key or
+        // value is missing or unreadable.
+        public static int? GetHklmDword(string subKey, string name)
+        {
+            try
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = baseKey.OpenSubKey(subKey))
+                {
+                    if (key == null) return null;
+                    object v = key.GetValue(name);
+                    if (v == null) return null;
+                    try { return Convert.ToInt32(v); }
+                    catch { return null; }
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Reads a value from HKLM (64-bit view) as a string. Null if missing.
+        public static string GetHklmString(string subKey, string name)
+        {
+            try
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = baseKey.OpenSubKey(subKey))
+                {
+                    if (key == null) return null;
+                    object v = key.GetValue(name);
+                    return v == null ? null : v.ToString();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // True if the given HKLM subkey exists (64-bit view).
+        public static bool HklmSubKeyExists(string subKey)
+        {
+            try
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = baseKey.OpenSubKey(subKey))
+                {
+                    return key != null;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Child subkey names of an HKLM key (64-bit view); empty array if missing.
+        public static string[] GetHklmSubKeyNames(string subKey)
+        {
+            try
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = baseKey.OpenSubKey(subKey))
+                {
+                    return key == null ? new string[0] : key.GetSubKeyNames();
+                }
+            }
+            catch
+            {
+                return new string[0];
             }
         }
         public static string GetReleaseIdFromRegistiry()
         {
             try
             {
-                RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-                var displayVersion = key.GetValue("ReleaseId").ToString();
-                return displayVersion;
+                using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
+                {
+                    var v = key == null ? null : key.GetValue("ReleaseId");
+                    return v == null ? "" : v.ToString();
+                }
             }
-            catch (ManagementException e)
+            catch
             {
-                Console.WriteLine("[!] {0}", e.Message);
-                throw;
+                return "";
             }
         }
         public static string GetVersionFromRegistry()
         {
             try
             {
-                RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-                var displayVersion = key.GetValue("DisplayVersion").ToString();
-                return displayVersion;
+                using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
+                {
+                    var v = key == null ? null : key.GetValue("DisplayVersion");
+                    return v == null ? "" : v.ToString();
+                }
             }
-            catch (ManagementException e)
-            {
-                Console.WriteLine("[!] {0}", e.Message);
-                throw;
-            }
-            catch (NullReferenceException)
+            catch
             {
                 return "";
             }
         }
         public static bool IsModifiable(RegistryKey key)
         {
+            if (key == null)
+            {
+                return false;
+            }
             RegistryRights[] ModifyRights =
             {
                 RegistryRights.ChangePermissions,

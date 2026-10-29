@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>IronSharp</RootNamespace>
     <AssemblyName>IronSharp</AssemblyName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
@@ -53,18 +53,6 @@
     <StartupObject>IronSharp.Program</StartupObject>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>990BEEC87E9D589C6E42DC19308F6068652781A9</ManifestCertificateThumbprint>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ManifestKeyFile>IronSharp_TemporaryKey.pfx</ManifestKeyFile>
-  </PropertyGroup>
-  <PropertyGroup>
-    <GenerateManifests>true</GenerateManifests>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignManifests>false</SignManifests>
-  </PropertyGroup>
-  <PropertyGroup>
     <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
@@ -81,27 +69,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CVE\CVE_2020_0796.cs" />
-    <Compile Include="CVE\CVE_2020_0787.cs" />
-    <Compile Include="CVE\CVE_2021_1732.cs" />
-    <Compile Include="CVE\CVE_2021_40449.cs" />
-    <Compile Include="CVE\CVE_2021_42278.cs" />
-    <Compile Include="CVE\CVE_2022_21882.cs" />
-    <Compile Include="CVE\CVE_2021_34527.cs" />
-    <Compile Include="CVE\CVE_2020_1013.cs" />
-    <Compile Include="CVE\CVE_2020_0683.cs" />
-    <Compile Include="CVE\CVE_2020_0668.cs" />
-    <Compile Include="CVE\CVE_2019_1405.cs" />
-    <Compile Include="CVE\CVE_2019_1388.cs" />
-    <Compile Include="CVE\CVE_2019_1385.cs" />
-    <Compile Include="CVE\CVE_2019_1315.cs" />
-    <Compile Include="CVE\CVE_2019_1253.cs" />
-    <Compile Include="CVE\CVE_2019_1130.cs" />
-    <Compile Include="CVE\CVE_2019_1064.cs" />
-    <Compile Include="CVE\CVE-2019-0836.cs" />
-    <Compile Include="CVE\CVE-2019-0841.cs" />
+    <Compile Include="Core\Severity.cs" />
+    <Compile Include="Core\Finding.cs" />
+    <Compile Include="Core\Report.cs" />
+    <Compile Include="Core\CveData.cs" />
+    <Compile Include="Checks\CredentialProtection.cs" />
+    <Compile Include="Checks\NetworkProtocols.cs" />
+    <Compile Include="Checks\RemoteAccess.cs" />
+    <Compile Include="Checks\AccountPolicy.cs" />
+    <Compile Include="Checks\DefenseAndLogging.cs" />
     <Compile Include="Utilities\AlwaysInstallElevated.cs" />
     <Compile Include="Utilities\AutoLogon.cs" />
+    <Compile Include="Utilities\GetAv.cs" />
     <Compile Include="Utilities\CVECheck.cs" />
     <Compile Include="Utilities\HijackablePaths.cs" />
     <Compile Include="Information.cs" />
@@ -123,9 +102,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include=".NETFramework,Version=v4.6.2">
+    <BootstrapperPackage Include=".NETFramework,Version=v4.8">
       <Visible>False</Visible>
-      <ProductName>Microsoft .NET Framework 4.6.2 %28x86 and x64%29</ProductName>
+      <ProductName>Microsoft .NET Framework 4.8 %28x86 and x64%29</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
     <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
@@ -135,6 +114,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Data\cve-data.json" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>

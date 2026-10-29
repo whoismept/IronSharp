@@ -1,55 +1,99 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
+using IronSharp.Core;
 
 namespace IronSharp.Utilities
 {
     internal class CVECheck
     {
+        private const string Category = "Missing updates";
+
         public static void CheckAll()
         {
-            //Name / Description                        Build Number
-            //Windows Server 2012 R2                    9600
-            //Windows 10, Version 1507                  10240
-            //Windows 10, Version 1511                  10586
-            //Windows 10, Version 1607                  14393
-            //Windows Server 2016, Version 1607         14393
-            //Windows 10, Version 1703                  15063
-            //Windows 10, Version 1709                  16299
-            //Windows 10, Version 1803                  17134
-            //Windows Server 2019, Version 1809         17763
-            //Windows 10, Version 1809                  17763
-            //Windows 10, Version 1903                  18362
-            //Windows 10, Version 1909                  18363
-            //Windows Server, Version 1909              18363
-            //Windows 10, Version 2004                  19041
-            //Windows Server, Version 2004              19041
-            //Windows 10, Version 20H2                  19042
-            //Windows Server, Version 20H2              19042
-            //Windows 10, Version 21H1                  19043
-            //Windows Server 2022                       20348
-            //Windows 11, Version 21H2                  22000
+            CheckAll(null);
+        }
 
-            var kblist = Utilities.GetWMIQuery.GetInstalledKBs();
-            var buildnumber = Utilities.GetWMIQuery.GetBuildNumber();
-            CVE.CVE_2019_0836.Check(buildnumber, kblist);
-            CVE.CVE_2019_0841.Check(buildnumber, kblist);
-            CVE.CVE_2019_1064.Check(buildnumber, kblist);
-            CVE.CVE_2019_1130.Check(buildnumber, kblist);
-            CVE.CVE_2019_1253.Check(buildnumber, kblist);
-            CVE.CVE_2019_1315.Check(buildnumber, kblist);
-            CVE.CVE_2019_1385.Check(buildnumber, kblist);
-            CVE.CVE_2019_1388.Check(buildnumber, kblist);
-            CVE.CVE_2019_1405.Check(buildnumber, kblist);
-            CVE.CVE_2020_0668.Check(buildnumber, kblist);
-            CVE.CVE_2020_0683.Check(buildnumber, kblist);
-            CVE.CVE_2020_0787.Check(buildnumber, kblist);
-            CVE.CVE_2020_0796.Check(buildnumber, kblist);
-            CVE.CVE_2020_1013.Check(buildnumber, kblist);
-            CVE.CVE_2021_1732.Check(buildnumber, kblist);
-            CVE.CVE_2021_34527.Check(buildnumber, kblist);
-            CVE.CVE_2021_40449.Check(buildnumber, kblist);
-            CVE.CVE_2022_21882.Check(buildnumber, kblist);
-            CVE.CVE_2021_42278.Check(buildnumber, kblist);
+        // overrideJson: when supplied (e.g. from --online or --data) it is used
+        // instead of the embedded dataset.
+        public static void CheckAll(string overrideJson)
+        {
+            int build = GetWMIQuery.GetBuildNumber();
+            int? ubrNullable = RegistryUtilities.GetHklmDword(
+                @"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "UBR");
+
+            string json = overrideJson ?? CveData.LoadEmbeddedJson();
+            var records = CveData.Load(json);
+
+            // Gather, for this build, the CVE fixes that carry a revision (UBR).
+            int latest = 0;
+            var gaps = new List<CveRecord>();
+            int covered = 0;
+            foreach (var rec in records)
+            {
+                BuildFix fix;
+                if (!rec.Builds.TryGetValue(build, out fix) || fix.Ubr <= 0)
+                {
+                    continue;
+                }
+                covered++;
+                if (fix.Ubr > latest) latest = fix.Ubr;
+                if (ubrNullable.HasValue && ubrNullable.Value < fix.Ubr)
+                {
+                    gaps.Add(rec);
+                }
+            }
+
+            if (covered == 0)
+            {
+                Report.Ok(Category, "Patch level",
+                    "No build-revision data for build " + build + " in the dataset (" + records.Count + " CVEs).");
+                return;
+            }
+            if (!ubrNullable.HasValue)
+            {
+                Report.Weak(Category, "Patch level could not be determined", Severity.Low,
+                    "The build revision (UBR) could not be read, so missing updates cannot be assessed.",
+                    "Run from an elevated prompt, or check Windows Update manually.",
+                    "Windows release health");
+                return;
+            }
+
+            int ubr = ubrNullable.Value;
+            if (gaps.Count == 0)
+            {
+                Report.Ok(Category, "Patch level",
+                    "Build " + build + "." + ubr + " is at or above the latest fix revision in the dataset (." + latest + ").");
+                return;
+            }
+
+            int high = gaps.Count(g => Eq(g.Severity, "high"));
+            int med = gaps.Count(g => Eq(g.Severity, "medium"));
+            int low = gaps.Count - high - med;
+            int kev = gaps.Count(g => g.Kev);
+            // Show actively-exploited (KEV) gaps first, then newest.
+            var sample = gaps
+                .OrderByDescending(g => g.Kev)
+                .ThenByDescending(g => g.Builds[build].Ubr)
+                .Take(8)
+                .Select(g => g.Kev ? g.Id + "*" : g.Id);
+
+            string kevText = kev > 0
+                ? " " + kev + " are ACTIVELY EXPLOITED (CISA KEV, marked *)."
+                : "";
+
+            Report.Weak(Category, "Windows build is behind on security updates", Severity.High,
+                "Build " + build + "." + ubr + " is below the latest fix revision ." + latest +
+                ". " + gaps.Count + " Windows EoP/RCE CVE fix(es) were released after this revision" +
+                " (High: " + high + ", Medium: " + med + ", Low: " + low + ")." + kevText +
+                " e.g. " + string.Join(", ", sample),
+                "Install the latest cumulative update for this build to reach revision ." + latest + " or newer."
+                + (kev > 0 ? " Prioritise: actively-exploited issues are unpatched." : ""),
+                "MSRC Security Update Guide / CISA KEV / Windows release health");
+        }
+
+        private static bool Eq(string a, string b)
+        {
+            return a != null && a.Trim().ToLowerInvariant() == b;
         }
     }
 }
