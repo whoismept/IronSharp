@@ -11,9 +11,18 @@ namespace IronSharp.Utilities
         {
             List<string> vulnSvcs = new List<string>();
             RegistryKey services = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\");
+            if (services == null)
+            {
+                Console.WriteLine("[-] Could not open Services registry key");
+                return;
+            }
             foreach (var service in services.GetSubKeyNames())
             {
                 RegistryKey imagePath = services.OpenSubKey(service);
+                if (imagePath == null)
+                {
+                    continue;
+                }
                 foreach (var value in imagePath.GetValueNames())
                 {
                     string path = Convert.ToString(imagePath.GetValue("ImagePath"));

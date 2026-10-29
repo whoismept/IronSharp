@@ -1,4 +1,5 @@
-﻿using System.Security.AccessControl;
+﻿using System;
+using System.Security.AccessControl;
 
 namespace IronSharp.Utilities
 {
@@ -6,9 +7,16 @@ namespace IronSharp.Utilities
     {
         const string regPath = "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment";
         const string regName = "Path";
-        public static string registrypath = RegistryUtilities.GetRegistryValue("HKLM", regPath, regName);
+
         public static void HighjackablePaths()
         {
+            string registrypath = RegistryUtilities.GetRegistryValue("HKLM", regPath, regName);
+            if (string.IsNullOrEmpty(registrypath))
+            {
+                Console.WriteLine("[-] Could not read machine %PATH%");
+                return;
+            }
+
             foreach (var item in registrypath.Split(';'))
             {
                 if (!string.IsNullOrEmpty(item))

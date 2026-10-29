@@ -11,33 +11,29 @@ namespace IronSharp.Utilities
         public static string GetRegistryValue(string hive, string path, string value)
         {
             string registryKeyValue = null;
+            RegistryKey regKey;
             if (hive == "HKCU")
             {
-                var regKey = Registry.CurrentUser.OpenSubKey(path);
-                if (regKey != null)
-                {
-                    registryKeyValue = regKey.GetValue(value).ToString();
-                }
-                return registryKeyValue;
+                regKey = Registry.CurrentUser.OpenSubKey(path);
             }
             else if (hive == "HKU")
             {
-                var regKey = Registry.Users.OpenSubKey(path);
-                if (regKey != null)
-                {
-                    registryKeyValue = regKey.GetValue(value).ToString();
-                }
-                return registryKeyValue;
+                regKey = Registry.Users.OpenSubKey(path);
             }
             else
             {
-                var regKey = Registry.LocalMachine.OpenSubKey(path);
-                if (regKey != null)
-                {
-                    registryKeyValue = regKey.GetValue(value).ToString();
-                }
-                return registryKeyValue;
+                regKey = Registry.LocalMachine.OpenSubKey(path);
             }
+
+            if (regKey != null)
+            {
+                var raw = regKey.GetValue(value);
+                if (raw != null)
+                {
+                    registryKeyValue = raw.ToString();
+                }
+            }
+            return registryKeyValue;
         }
         public static string GetReleaseIdFromRegistiry()
         {
@@ -73,6 +69,10 @@ namespace IronSharp.Utilities
         }
         public static bool IsModifiable(RegistryKey key)
         {
+            if (key == null)
+            {
+                return false;
+            }
             RegistryRights[] ModifyRights =
             {
                 RegistryRights.ChangePermissions,

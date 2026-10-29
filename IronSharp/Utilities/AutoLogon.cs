@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+
 namespace IronSharp.Utilities
 {
     public class AutoLogon
@@ -10,8 +11,14 @@ namespace IronSharp.Utilities
             {
                 RegistryKey rb = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
                 RegistryKey rb2 = rb.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon");
+                if (rb2 == null)
+                {
+                    Console.WriteLine("No Autologon Registry Key Found..");
+                    return;
+                }
+
                 var autologon = rb2.GetValue("AutoAdminLogon");
-                if (autologon.Equals("1"))
+                if (autologon != null && autologon.ToString() == "1")
                 {
                     Console.WriteLine("[+] Credentials Found: ");
                     Console.WriteLine("Admin Logon: " + rb2.GetValue("AutoAdminLogon"));

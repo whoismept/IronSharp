@@ -1,24 +1,51 @@
 ﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace IronSharp.Utilities
 {
     internal class AlwaysInstallElevated
     {
+        private const string SubKey = @"SOFTWARE\Policies\Microsoft\Windows\Installer";
+        private const string ValueName = "AlwaysInstallElevated";
+
         public static void AlwaysInstallElevatedCheck()
         {
-            string subKey = @"SOFTWARE\Policies\Microsoft\Windows\Installer\";
-            if (ReadFromRegistry("AlwaysInstallElevated", subKey) == "1")
-                Console.WriteLine("Always Install Elevated Is Enabled.");
+            // The policy is only exploitable when BOTH HKLM and HKCU are set to 1.
+            bool hklm = ReadDword(Registry.LocalMachine) == 1;
+            bool hkcu = ReadDword(Registry.CurrentUser) == 1;
+
+            if (hklm && hkcu)
+            {
+                Console.WriteLine("[+] AlwaysInstallElevated is enabled in BOTH HKLM and HKCU - exploitable.");
+            }
+            else if (hklm || hkcu)
+            {
+                Console.WriteLine("[-] AlwaysInstallElevated is only set in {0} - not exploitable on its own (both hives must be 1).",
+                    hklm ? "HKLM" : "HKCU");
+            }
+            else
+            {
+                Console.WriteLine("[-] AlwaysInstallElevated is not enabled.");
+            }
         }
-        static string ReadFromRegistry(string keyName, string subKey)
+
+        private static int ReadDword(RegistryKey hive)
         {
-            RegistryKey sk = Registry.LocalMachine.OpenSubKey(subKey);
-            if (sk == null) return null; else return sk.GetValue(keyName.ToUpper()).ToString();
+            try
+            {
+                using (RegistryKey sk = hive.OpenSubKey(SubKey))
+                {
+                    if (sk == null) return 0;
+                    object value = sk.GetValue(ValueName);
+                    if (value == null) return 0;
+                    int result;
+                    return int.TryParse(value.ToString(), out result) ? result : 0;
+                }
+            }
+            catch
+            {
+                return 0;
+            }
         }
     }
 }

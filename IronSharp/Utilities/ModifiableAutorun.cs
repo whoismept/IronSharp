@@ -25,6 +25,10 @@ namespace IronSharp.Utilities
                 foreach (string item in regkeys)
                 {
                     RegistryKey regkey = rb.OpenSubKey(item);
+                    if (regkey == null)
+                    {
+                        continue;
+                    }
                     foreach (string key in regkey.GetValueNames())
                     {
                         Console.WriteLine(key + ": " + regkey.GetValue(key));
