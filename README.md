@@ -18,13 +18,13 @@ enumeration and CTFs.
 
 | Category | Checks | Typical severity |
 |----------|--------|------------------|
-| **Missing updates** | Known privilege-escalation / RCE CVEs the current build appears unpatched against (2019 → 2025, incl. several CISA KEV) | High |
+| **Missing updates** | Windows EoP / RCE CVEs the current build appears unpatched against, from a dataset auto-refreshed from MSRC (incl. several CISA KEV) | High |
 | **Privilege escalation** | AlwaysInstallElevated (HKLM+HKCU), unquoted service paths, user-writable `%PATH%`, user-modifiable service registry keys, user-writable autorun targets | Medium–High |
-| **Credential protection** | WDigest cleartext caching, LSA protection (RunAsPPL), LAN Manager auth level, cached logon count | Low–High |
-| **Network protocols** | SMBv1, SMB signing, LLMNR, NBT-NS, legacy SSL/TLS (SChannel) | Medium–High |
+| **Credential protection** | WDigest cleartext caching, LSA protection (RunAsPPL), LAN Manager auth level, outgoing NTLM restriction, cached logon count | Low–High |
+| **Network protocols** | SMBv1, SMB signing, SMB encryption, LLMNR, NBT-NS, legacy SSL/TLS (SChannel) | Low–High |
 | **Remote access** | RDP enabled without Network Level Authentication | High |
 | **Accounts & policy** | Guest account state, anonymous / null-session access, UAC configuration | Medium–High |
-| **Defense & logging** | Windows Firewall per profile, Microsoft Defender state (best-effort), PowerShell script-block / module logging, AutoRun/AutoPlay, LAPS presence | Low–High |
+| **Defense & logging** | Windows Firewall per profile, Microsoft Defender state (real-time, MAPS/cloud, PUA, Tamper Protection — best-effort), PowerShell script-block / module logging, AutoRun/AutoPlay, LAPS presence | Low–High |
 | **Endpoint defense** | Registered AV / EDR products | Info/Medium |
 | **Credential exposure** | Auto-logon credentials stored in the registry | Medium–High |
 
@@ -48,17 +48,23 @@ A final **Summary** lists the count of weaknesses by severity.
 
 ### How the missing-update (CVE) check works
 
-For each supported CVE, IronSharp knows the per-build KB update(s) that fix it.
-It reads the build number and installed KBs and flags a CVE as *potentially
-vulnerable* when the machine runs an affected build **and none** of the fixing
-KBs is installed.
+The CVE/update data lives in a dataset (`IronSharp/Data/cve-data.json`) that maps
+each CVE to the per-build KB update(s) that fix it. The dataset ships **embedded**
+in the binary, so the check runs fully offline. It reads the build number and the
+installed KBs and flags a CVE as *potentially vulnerable* when the machine runs an
+affected build **and none** of the fixing KBs is installed. The build revision
+(UBR) is shown in the header so you can see the exact patch level.
 
-> **Accuracy note.** This is a heuristic based on the *first* fixing update per
-> build. Windows cumulative updates supersede one another, so a machine patched
-> by a **later** cumulative update not listed for a given CVE may still be
-> reported. Confirm any finding against the current patch level. Coverage runs
-> from 2019 through 2025; newer CVEs can be added as verified KB data becomes
-> available.
+The dataset is **kept current automatically**: a scheduled GitHub Action
+(`tools/update_cve_data.py` + `update-data.yml`) pulls recent Windows EoP/RCE CVEs
+and their fixing KBs from the official **MSRC CVRF API** and commits an updated
+`cve-data.json`. You can also run `IronSharp.exe --online` to fetch the latest
+dataset at run time (requires internet on the audited host; otherwise the embedded
+copy is used).
+
+> **Accuracy note.** This is a heuristic: a machine patched by a **later**
+> cumulative update that supersedes the listed KB may still be reported. Confirm
+> any finding against the current patch level.
 
 ---
 
@@ -102,10 +108,12 @@ The binary is written to `IronSharp\bin\Release\IronSharp.exe`.
 Run the executable on the machine you want to audit:
 
 ```bat
-IronSharp.exe
+IronSharp.exe                 :: audit using the embedded dataset (offline)
+IronSharp.exe --online        :: fetch the latest CVE dataset first (needs internet)
+IronSharp.exe --help          :: show usage
 ```
 
-It takes no arguments and writes to standard output. Redirect to keep a report:
+It writes to standard output. Redirect to keep a report:
 
 ```bat
 IronSharp.exe > hardening-report.txt
@@ -113,7 +121,7 @@ IronSharp.exe > hardening-report.txt
 
 Reading the output: `[HIGH]`/`[MEDIUM]`/`[LOW]` tags mark weaknesses with a
 recommendation; `[OK]` marks a control that is configured correctly or is
-informational.
+informational. A final **Summary** counts weaknesses by severity.
 
 ---
 
