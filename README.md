@@ -29,7 +29,7 @@ spirit to WinPEAS or Seatbelt but focused and lightweight.
 | **AlwaysInstallElevated** | Whether the policy is set in **both** HKLM and HKCU | When both are `1`, any MSI runs as SYSTEM |
 | **Auto-logon** | Credentials stored in the Winlogon registry keys | Plaintext passwords / SIDs left in the registry |
 | **AV / EDR** | Security products registered with Windows Security Center | Helps understand what defenses are present |
-| **Microsoft Teams (classic)** | Whether the classic Teams `current` directory exists | Historically vulnerable to DLL side-loading |
+| **Microsoft Teams (classic)** | Whether classic Teams is installed and whether its `current` directory or DLLs/EXEs are writable by the current user | User-writable targets are concrete DLL side-loading candidates |
 
 ### How the CVE check works
 
