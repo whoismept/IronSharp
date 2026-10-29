@@ -167,11 +167,3 @@ This tool is intended for security assessments, hardening reviews, CTFs and
 research **on systems you own or are explicitly authorized to test**. You are
 responsible for complying with all applicable laws and for obtaining permission
 before running it against any system. The author assumes no liability for misuse.
-
----
-
-## Author
-
-- Mert Umut — [@whoismept](https://github.com/whoismept)
-
-Special thanks to [@erdemstar](https://github.com/erdemstar).
