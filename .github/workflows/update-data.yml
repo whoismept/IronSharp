@@ -2,8 +2,9 @@ name: Update CVE dataset
 
 on:
   schedule:
-    # Monthly, a few days after Patch Tuesday (15th, 06:00 UTC).
-    - cron: "0 6 15 * *"
+    # Every Wednesday 12:00 UTC; the job itself only proceeds on the Wednesday
+    # right after Patch Tuesday (day-of-month 9-15 is the week's only Wednesday).
+    - cron: "0 12 * * 3"
   workflow_dispatch:
     inputs:
       months:
@@ -26,10 +27,25 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Gate scheduled runs to the Wednesday after Patch Tuesday
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            dom=$(date -u +%d)
+            if [ "$dom" -lt 9 ] || [ "$dom" -gt 15 ]; then
+              echo "Day-of-month $dom is not Patch Tuesday week; skipping."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
       - name: Refresh dataset from MSRC
+        if: steps.gate.outputs.run == 'true'
         run: python tools/update_cve_data.py --months "${{ github.event.inputs.months || 24 }}"
 
       - name: Commit changes if any
+        if: steps.gate.outputs.run == 'true'
         run: |
           if [ -n "$(git status --porcelain IronSharp/Data/cve-data.json)" ]; then
             git config user.name "github-actions[bot]"
