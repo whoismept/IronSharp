@@ -1,0 +1,70 @@
+name: Cleanup old builds
+
+on:
+  # Prune right after a new release is published.
+  workflow_run:
+    workflows: [ "Release" ]
+    types: [ completed ]
+  # Monthly safety sweep.
+  schedule:
+    - cron: "23 4 2 * *"
+  # Manual run (optionally override how many to keep).
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: "How many most-recent releases / artifacts to keep"
+        required: false
+        default: "5"
+
+permissions:
+  contents: write   # delete releases and their tags
+  actions: write    # delete workflow artifacts
+
+concurrency:
+  group: cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      KEEP: ${{ github.event.inputs.keep || '5' }}
+    steps:
+      - name: Prune old releases (keep the newest $KEEP)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Keeping the $KEEP most recent releases."
+          mapfile -t tags < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 \
+            --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName')
+          echo "Found ${#tags[@]} release(s)."
+          i=0
+          for t in "${tags[@]}"; do
+            i=$((i + 1))
+            if [ "$i" -le "$KEEP" ]; then
+              echo "keep   #$i  $t"
+            else
+              echo "delete #$i  $t (release + tag)"
+              gh release delete "$t" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+            fi
+          done
+
+      - name: Prune old build artifacts (keep the newest $KEEP)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Keeping the $KEEP most recent artifacts."
+          mapfile -t ids < <(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq '.artifacts | sort_by(.created_at) | reverse | .[].id')
+          echo "Found ${#ids[@]} artifact(s)."
+          i=0
+          for id in "${ids[@]}"; do
+            i=$((i + 1))
+            if [ "$i" -le "$KEEP" ]; then
+              echo "keep   #$i  artifact $id"
+            else
+              echo "delete #$i  artifact $id"
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+            fi
+          done
