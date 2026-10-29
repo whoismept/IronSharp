@@ -72,6 +72,11 @@
     <Compile Include="Core\Severity.cs" />
     <Compile Include="Core\Finding.cs" />
     <Compile Include="Core\Report.cs" />
+    <Compile Include="Checks\CredentialProtection.cs" />
+    <Compile Include="Checks\NetworkProtocols.cs" />
+    <Compile Include="Checks\RemoteAccess.cs" />
+    <Compile Include="Checks\AccountPolicy.cs" />
+    <Compile Include="Checks\DefenseAndLogging.cs" />
     <Compile Include="CVE\CVE_2020_0796.cs" />
     <Compile Include="CVE\CVE_2020_0787.cs" />
     <Compile Include="CVE\CVE_2021_1732.cs" />

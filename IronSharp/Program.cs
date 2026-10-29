@@ -21,6 +21,13 @@ namespace IronSharp
             Utilities.AutoLogon.LoginCheck();
             Utilities.GetAv.CheckSecurityProduct();
 
+            // Configuration hardening checks against external threats (read-only).
+            Checks.CredentialProtection.Run();
+            Checks.NetworkProtocols.Run();
+            Checks.RemoteAccess.Run();
+            Checks.AccountPolicy.Run();
+            Checks.DefenseAndLogging.Run();
+
             Report.PrintAll();
             Report.PrintSummary();
         }

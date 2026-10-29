@@ -94,6 +94,23 @@ namespace IronSharp.Utilities
                 return false;
             }
         }
+
+        // Child subkey names of an HKLM key (64-bit view); empty array if missing.
+        public static string[] GetHklmSubKeyNames(string subKey)
+        {
+            try
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = baseKey.OpenSubKey(subKey))
+                {
+                    return key == null ? new string[0] : key.GetSubKeyNames();
+                }
+            }
+            catch
+            {
+                return new string[0];
+            }
+        }
         public static string GetReleaseIdFromRegistiry()
         {
             try
