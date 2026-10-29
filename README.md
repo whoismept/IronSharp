@@ -1,5 +1,8 @@
 # IronSharp
 
+[![Build](https://github.com/whoismept/IronSharp/actions/workflows/build.yml/badge.svg)](https://github.com/whoismept/IronSharp/actions/workflows/build.yml)
+[![Update CVE dataset](https://github.com/whoismept/IronSharp/actions/workflows/update-data.yml/badge.svg)](https://github.com/whoismept/IronSharp/actions/workflows/update-data.yml)
+
 IronSharp is a **read-only Windows hardening advisor** written in C#. It audits
 the local machine against common external-threat and privilege-escalation
 weaknesses and reports, for each finding, a **severity**, the **observed state**,
