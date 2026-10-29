@@ -1,6 +1,11 @@
 name: Update CVE dataset
 
 on:
+  # Temporary: lets the updater run on this feature branch before it reaches the
+  # default branch (where schedule/workflow_dispatch become available). Remove
+  # this push trigger once merged to master.
+  push:
+    branches: [ "update-v1.1" ]
   schedule:
     # Monthly, a few days after Patch Tuesday (15th, 06:00 UTC).
     - cron: "0 6 15 * *"
