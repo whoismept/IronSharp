@@ -1,0 +1,65 @@
+name: Publish latest package
+
+# Rolling release: rebuilds IronSharp.exe from master and refreshes a single
+# `latest` release (no version bump) so the published package always carries
+# the current binary and CVE dataset. Versioned releases stay as history.
+on:
+  workflow_run:
+    workflows: [ "Update CVE dataset" ]
+    types: [ completed ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-latest
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # Skip when the dataset run failed; always run on manual dispatch.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore packages
+        run: nuget restore IronSharp.sln
+
+      - name: Build (Release)
+        run: msbuild IronSharp.sln /p:Configuration=Release /p:Platform="Any CPU"
+
+      - name: Compute SHA256
+        shell: pwsh
+        run: |
+          $exe  = "IronSharp/bin/Release/IronSharp.exe"
+          $data = "IronSharp/Data/cve-data.json"
+          $h1 = (Get-FileHash $exe  -Algorithm SHA256).Hash.ToLower()
+          $h2 = (Get-FileHash $data -Algorithm SHA256).Hash.ToLower()
+          "$h1  IronSharp.exe`n$h2  cve-data.json" | Out-File -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+
+      - name: Refresh the rolling 'latest' release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          # Recreate the single 'latest' release at the current commit with fresh assets.
+          gh release delete latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
+          gh release create latest \
+            IronSharp/bin/Release/IronSharp.exe \
+            IronSharp/Data/cve-data.json \
+            SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$sha" --latest \
+            --title "IronSharp (latest)" \
+            --notes "Rolling build: the current IronSharp.exe and combined CVE dataset built from master. Refreshed automatically after each dataset update. Verify the download against SHA256SUMS.txt. Requires .NET Framework 4.8."

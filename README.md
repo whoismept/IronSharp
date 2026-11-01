@@ -144,11 +144,13 @@ registry and ACL reads are restricted for standard users.
 
 ## Installation
 
-### Download a release (recommended)
+### Download the latest package (recommended)
 
-Download `IronSharp.exe` from the latest
-[Release](https://github.com/whoismept/IronSharp/releases/latest). Each release
-also ships a `SHA256SUMS.txt`; verify the download before running:
+The [**latest**](https://github.com/whoismept/IronSharp/releases/latest) release is a
+**rolling build**: it is rebuilt from `master` and refreshed in place (same `latest`
+tag, no version bump) whenever the CVE dataset updates, so it always carries the
+current `IronSharp.exe` and embedded dataset. Versioned releases (e.g. `v1.5.0`) are
+kept as frozen history. Download `IronSharp.exe` and verify it before running:
 
 ```powershell
 (Get-FileHash .\IronSharp.exe -Algorithm SHA256).Hash.ToLower()
