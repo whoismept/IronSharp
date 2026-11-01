@@ -423,6 +423,10 @@ def main():
     with open(args.out, encoding="utf-8") as f:
         existing = json.load(f)
 
+    # Snapshot the comparable payload BEFORE anything mutates the product dicts
+    # (build_thirdparty edits them in place, and they are shared with `existing`).
+    old_payload = section_payload(existing)
+
     products = (existing.get("thirdparty") or {}).get("products", existing.get("products", []))
     if not products:
         print("No third-party allowlist in dataset.", file=sys.stderr)
@@ -446,7 +450,7 @@ def main():
         "thirdparty": {"products": tp_products},
     }
 
-    if section_payload(doc) == section_payload(existing):
+    if section_payload(doc) == old_payload:
         print("No dataset changes.")
         return 0
 
