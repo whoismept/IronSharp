@@ -79,8 +79,8 @@ The dataset is **kept current automatically**: a scheduled GitHub Action
 (`tools/update_cve_data.py` + `update-data.yml`) pulls recent Windows EoP/RCE CVEs
 and their fixed build revisions from the official **MSRC CVRF API**, enriches them
 with the **CISA Known Exploited Vulnerabilities** catalog (an `actively exploited`
-flag), and commits an updated `cve-data.json`. The run fires on the Wednesday after
-Patch Tuesday.
+flag), and commits an updated `cve-data.json`. The same Action also refreshes the
+third-party section (NVD). It runs weekly (Wednesday) and on demand.
 
 You can use a fresher dataset without rebuilding via `--online` or `--data`.
 Note that `--online` does **not** contact MSRC or CISA directly: it downloads the
@@ -88,7 +88,7 @@ committed `cve-data.json` from the repository (`raw.githubusercontent.com`, `mas
 over HTTPS, keeping the CVRF/KEV parsing in one place. Because the scheduled updater
 commits straight to `master`, `--online` reflects the newest data as soon as that
 runs — a single source of truth. `--data` loads an equivalent file you supply. Both
-fall back to the embedded dataset on any error. (The datasets are also attached to
+fall back to the embedded dataset on any error. (The dataset is also attached to
 each release for manual download and offline `--data` use.)
 
 When a build is behind, the summary calls out how many of the missing fixes are
@@ -102,8 +102,8 @@ When a build is behind, the summary calls out how many of the missing fixes are
 Beyond Windows itself, IronSharp inventories installed third-party applications
 from the registry Uninstall keys (`HKLM`, `HKLM\WOW6432Node`, `HKCU` — read-only;
 it does **not** use the slow, side-effecting `Win32_Product` WMI class) and checks
-each against a **curated** vulnerability dataset
-(`IronSharp/Data/thirdparty-cve-data.json`).
+each against a **curated** vulnerability dataset (the `thirdparty` section of
+`IronSharp/Data/cve-data.json`).
 
 To stay true to IronSharp's low-noise goal, matching is deliberately conservative:
 
@@ -118,13 +118,13 @@ To stay true to IronSharp's low-noise goal, matching is deliberately conservativ
   **3 most recent CVEs** in the dataset; older ones are summarised in the report
   as `... (+N earlier CVEs)` to keep the dataset and output compact.
 
-The dataset is produced by `tools/update_thirdparty_cve_data.py` +
-`update-thirdparty-data.yml`, which query the **NVD 2.0 API** per curated product
-(CPE vendor/product), keep only ranges with an actionable fixed upper bound, map
-CVSS to a severity, and flag **CISA KEV** entries. Set an `NVD_API_KEY` repository
-secret for a higher NVD rate limit (optional). Like the Windows dataset, it ships
-embedded, is committed to `master` (what `--online` reads), and is also attached to
-each release for manual download.
+The third-party section is produced by the same updater (`tools/update_cve_data.py`
++ `update-data.yml`) that builds the Windows section: it queries the **NVD 2.0 API**
+per curated product (CPE vendor/product), keeps only ranges with an actionable fixed
+upper bound, maps CVSS to a severity, and flags **CISA KEV** entries. Set an
+`NVD_API_KEY` repository secret for a higher NVD rate limit (optional). The whole
+dataset ships embedded, is committed to `master` (what `--online` reads), and is
+attached to each release for manual download.
 
 > This is a focused, curated check — not a full software-composition scanner. It
 > trades breadth for a very low false-positive rate. Validate against the vendor's
@@ -184,16 +184,15 @@ The binary is written to `IronSharp\bin\Release\IronSharp.exe`.
 Run the executable on the machine you want to audit:
 
 ```bat
-IronSharp.exe                      :: audit using the embedded datasets (offline)
-IronSharp.exe --online             :: fetch the latest datasets first (needs internet)
-IronSharp.exe --data cve-data.json :: load the Windows dataset from a local file
-IronSharp.exe --thirdparty-data thirdparty-cve-data.json :: local third-party dataset
+IronSharp.exe                      :: audit using the embedded dataset (offline)
+IronSharp.exe --online             :: fetch the latest dataset first (needs internet)
+IronSharp.exe --data cve-data.json :: load the combined dataset from a local file
 IronSharp.exe --help               :: show usage
 ```
 
-Dataset precedence is `--data` / `--thirdparty-data` > `--online` > embedded.
-`--online` refreshes **both** datasets (Windows and third-party) from the committed
-copies on `master`. The `--data` / `--thirdparty-data` flags let an air-gapped
+Dataset precedence is `--data` > `--online` > embedded. One combined
+`cve-data.json` (Windows + third-party sections) feeds both checks; `--online`
+fetches it from the committed copy on `master`. The `--data` flag lets an air-gapped
 operator refresh coverage by copying in a newer JSON (e.g. via USB) without
 rebuilding the binary or any internet access.
 

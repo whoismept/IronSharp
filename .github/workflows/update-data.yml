@@ -2,8 +2,8 @@ name: Update CVE dataset
 
 on:
   schedule:
-    # Every Wednesday 12:00 UTC; the job itself only proceeds on the Wednesday
-    # right after Patch Tuesday (day-of-month 9-15 is the week's only Wednesday).
+    # Weekly, Wednesday 12:00 UTC. Covers the Patch Tuesday window (MSRC) and
+    # keeps the third-party (NVD) section reasonably fresh.
     - cron: "0 12 * * 3"
   workflow_dispatch:
     inputs:
@@ -27,31 +27,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Gate scheduled runs to the Wednesday after Patch Tuesday
-        id: gate
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            dom=$(date -u +%d)
-            if [ "$dom" -lt 9 ] || [ "$dom" -gt 15 ]; then
-              echo "Day-of-month $dom is not Patch Tuesday week; skipping."
-              echo "run=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          fi
-          echo "run=true" >> "$GITHUB_OUTPUT"
-
-      - name: Refresh dataset from MSRC
-        if: steps.gate.outputs.run == 'true'
+      - name: Refresh combined dataset (MSRC + NVD + CISA KEV)
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: python tools/update_cve_data.py --months "${{ github.event.inputs.months || 24 }}"
 
       - name: Commit changes if any
-        if: steps.gate.outputs.run == 'true'
         run: |
           if [ -n "$(git status --porcelain IronSharp/Data/cve-data.json)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add IronSharp/Data/cve-data.json
-            git commit -m "data: refresh cve-data.json from MSRC CVRF"
+            git commit -m "data: refresh cve-data.json (MSRC + NVD + CISA KEV)"
             git push
           else
             echo "No changes to commit."

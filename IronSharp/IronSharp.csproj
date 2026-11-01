@@ -118,7 +118,6 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Data\cve-data.json" />
-    <EmbeddedResource Include="Data\thirdparty-cve-data.json" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>

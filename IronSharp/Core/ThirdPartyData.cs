@@ -44,7 +44,7 @@ namespace IronSharp.Core
             {
                 var asm = Assembly.GetExecutingAssembly();
                 var name = asm.GetManifestResourceNames()
-                    .FirstOrDefault(n => n.EndsWith("thirdparty-cve-data.json", StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(n => n.EndsWith("cve-data.json", StringComparison.OrdinalIgnoreCase));
                 if (name == null) return null;
                 using (var s = asm.GetManifestResourceStream(name))
                 using (var r = new StreamReader(s))
@@ -66,8 +66,15 @@ namespace IronSharp.Core
             {
                 var ser = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 var root = ser.DeserializeObject(json) as Dictionary<string, object>;
-                if (root == null || !root.ContainsKey("products")) return products;
-                var items = root["products"] as object[];
+                if (root == null) return products;
+
+                // Combined dataset: products live under "thirdparty":{"products":[...]}.
+                // Tolerate the older flat {"products":[...]} shape too.
+                object itemsObj = null;
+                var tp = root.ContainsKey("thirdparty") ? root["thirdparty"] as Dictionary<string, object> : null;
+                if (tp != null && tp.ContainsKey("products")) itemsObj = tp["products"];
+                else if (root.ContainsKey("products")) itemsObj = root["products"];
+                var items = itemsObj as object[];
                 if (items == null) return products;
 
                 foreach (var it in items)

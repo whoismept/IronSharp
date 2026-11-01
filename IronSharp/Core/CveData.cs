@@ -55,8 +55,15 @@ namespace IronSharp.Core
             {
                 var ser = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 var root = ser.DeserializeObject(json) as Dictionary<string, object>;
-                if (root == null || !root.ContainsKey("cves")) return records;
-                var cves = root["cves"] as object[];
+                if (root == null) return records;
+
+                // Combined dataset: Windows CVEs live under "windows":{"cves":[...]}.
+                // Tolerate the older flat {"cves":[...]} shape too.
+                object cvesObj = null;
+                var win = root.ContainsKey("windows") ? root["windows"] as Dictionary<string, object> : null;
+                if (win != null && win.ContainsKey("cves")) cvesObj = win["cves"];
+                else if (root.ContainsKey("cves")) cvesObj = root["cves"];
+                var cves = cvesObj as object[];
                 if (cves == null) return records;
 
                 foreach (var item in cves)
